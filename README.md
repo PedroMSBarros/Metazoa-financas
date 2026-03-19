@@ -1,8 +1,16 @@
 # 🦜 Metazoa Store — Controle Financeiro
 
-Sistema de gestão financeira desenvolvido para a **Metazoa Store**, loja de aquarismo e animais. Permite registrar vendas, acompanhar lucros e analisar o desempenho financeiro do negócio em tempo real.
+Sistema de gestão financeira desenvolvido para a **Metazoa Store**, loja de aquarismo e animais ornamentais. Permite registrar vendas, acompanhar lucros e analisar o desempenho financeiro do negócio em tempo real.
 
 **[→ Acessar o sistema](https://metazoa-financas.vercel.app)**
+
+---
+
+## 📸 Preview
+
+| Login | Dashboard |
+|---|---|
+| ![Login](screenshot-login.png) | ![Dashboard](screenshot-dashboard.png) |
 
 ---
 
@@ -14,7 +22,7 @@ Sistema de gestão financeira desenvolvido para a **Metazoa Store**, loja de aqu
 - **Histórico** com busca e filtro por categoria
 - **Resumo mensal** consolidado
 - **Filtro por período** aplicado em todo o sistema simultaneamente
-- **Autenticação via GitHub** — acesso restrito ao proprietário
+- **Autenticação via GitHub OAuth** — acesso restrito ao proprietário
 - **Dados persistidos** em banco PostgreSQL via Supabase
 
 ---
@@ -44,7 +52,9 @@ Sistema de gestão financeira desenvolvido para a **Metazoa Store**, loja de aqu
 
 ```
 metazoa-financas/
-└── index.html      # Aplicação completa (single-file)
+└── index.html              # Aplicação completa (single-file)
+└── screenshot-login.png
+└── screenshot-dashboard.png
 ```
 
 ---
@@ -84,12 +94,6 @@ CREATE POLICY "owner_only" ON transactions
   FOR ALL USING (auth.uid() = 'SEU-UUID-AQUI')
   WITH CHECK (auth.uid() = 'SEU-UUID-AQUI');
 ```
-
----
-
-## 📸 Preview
-
-![Login](https://metazoa-financas.vercel.app)
 
 ---
 
