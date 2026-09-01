@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -118,6 +119,11 @@ input::placeholder{color:var(--td)}
 select option{background:var(--bm)}
 .pb{background:var(--bm);border:1px solid var(--bor2);border-radius:8px;padding:.6rem .85rem;display:flex;align-items:center;justify-content:space-between;min-height:38px}
 .pbl{font-size:.7rem;color:var(--tmu)}.pbv{font-family:var(--mono);font-size:.9rem;font-weight:500}
+.autofill-hint{font-size:.7rem;color:var(--profit);min-height:1rem;margin-top:.3rem;line-height:1.4}
+.autofill-hint.warn{color:var(--orange)}
+.status-ok{color:var(--profit)}.status-warn{color:var(--yellow)}.status-hot{color:var(--loss);font-weight:700}
+.cli-summary-banner{background:rgba(217,80,48,.1);border:1px solid rgba(217,80,48,.3);border-radius:10px;padding:.85rem 1.1rem;margin-top:1rem;font-size:.84rem;color:#f0a888;display:flex;align-items:center;gap:.6rem}
+.cli-summary-ok{background:rgba(106,191,53,.08);border:1px solid rgba(106,191,53,.25);border-radius:10px;padding:.85rem 1.1rem;margin-top:1rem;font-size:.84rem;color:var(--sage);display:flex;align-items:center;gap:.6rem}
 
 /* PENDING ITEMS */
 .pending-section{margin-top:1.25rem}
@@ -262,6 +268,7 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <button class="tb active" onclick="showTab('dashboard',this)">Dashboard</button>
         <button class="tb" onclick="showTab('lancamentos',this)">Lançamentos</button>
         <button class="tb" onclick="showTab('historico',this)">Histórico</button>
+        <button class="tb" onclick="showTab('clientes',this)">Clientes</button>
         <button class="tb" onclick="showTab('mensal',this)">Mensal</button>
       </div>
     </div>
@@ -321,7 +328,9 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <div class="fg">
           <div class="fg2 s3">
             <label>Cliente (opcional)</label>
-            <input id="fClient" type="text" placeholder="Ex: João Silva, Cliente Balcão...">
+            <input id="fClient" type="text" placeholder="Ex: João Silva, Cliente Balcão..." list="fClientList" oninput="onClientInput()">
+            <datalist id="fClientList"></datalist>
+            <div class="autofill-hint" id="fClientHint"></div>
           </div>
           <div class="fg2">
             <label>Data da Venda</label>
@@ -332,7 +341,12 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <div style="border-top:1px solid var(--bor);margin:1.25rem 0;padding-top:1.25rem">
           <div class="stitle" style="margin-bottom:1rem">Adicionar itens</div>
           <div class="fg">
-            <div class="fg2 s2"><label>Produto / Animal</label><input id="fN" type="text" placeholder="Ex: Betta Splendens..."></div>
+            <div class="fg2 s2">
+              <label>Produto / Animal</label>
+              <input id="fN" type="text" placeholder="Ex: Betta Splendens..." list="fNList" oninput="onProductInput()">
+              <datalist id="fNList"></datalist>
+              <div class="autofill-hint" id="fNHint"></div>
+            </div>
             <div class="fg2"><label>Categoria</label><select id="fC"><option value="fish">🐟 Peixe/Animal</option><option value="plant">🌿 Planta</option><option value="equip">⚙️ Equipamento</option><option value="other">📦 Outro</option></select></div>
             <div class="fg2"><label>Quantidade</label><input id="fQ" type="number" value="1" min="1" oninput="rc()"></div>
             <div class="fg2"><label>Custo unit. (R$)</label><input id="fCo" type="number" placeholder="0,00" step="0.01" min="0" oninput="rc()"></div>
@@ -383,6 +397,44 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       <div id="tE" class="empty" style="display:none"><div class="ei">🐡</div><div>Nenhuma transação encontrada</div></div>
     </div>
 
+    <!-- CLIENTES -->
+    <div id="tab-clientes" class="tc">
+      <div class="meta-card" style="margin-top:1.5rem">
+        <div class="meta-row">
+          <div class="meta-label">Recontatar após</div>
+          <div class="meta-input-wrap">
+            <input id="recontatoInput" type="number" placeholder="30" style="width:80px">
+            <span style="font-size:.78rem;color:var(--tmu);white-space:nowrap">dias sem comprar</span>
+            <button class="meta-save" onclick="saveRecontato()">Salvar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="clientesSummary"></div>
+
+      <div class="th2" style="margin-top:1.25rem">
+        <div class="stitle" style="margin:0">Clientes</div>
+        <div class="fr">
+          <input id="srCli" type="text" placeholder="Buscar cliente..." oninput="rClientes()" style="width:190px">
+          <select id="cliSort" onchange="rClientes()">
+            <option value="dias">Mais tempo sem comprar</option>
+            <option value="total">Maior total gasto</option>
+            <option value="recente">Compra mais recente</option>
+          </select>
+        </div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>Cliente</th><th>Total gasto</th><th style="text-align:center">Compras</th>
+            <th>Categoria favorita</th><th>Última compra</th><th>Status</th>
+          </tr></thead>
+          <tbody id="cliB"></tbody>
+        </table>
+      </div>
+      <div id="cliE" class="empty" style="display:none"><div class="ei">👤</div><div>Nenhum cliente registrado ainda</div></div>
+    </div>
+
     <!-- MENSAL -->
     <div id="tab-mensal" class="tc">
       <div class="mwrap">
@@ -429,6 +481,8 @@ let txs=[],period='all',chL,chRC,chC,chTop;
 let pendingItems=[];
 let editingId=null;
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
+let productMemory={},clientNamesSet=new Set();
+let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
 
 /* ── BOOT ── */
 async function boot(){
@@ -461,8 +515,9 @@ async function loadApp(user){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
     if(user) document.getElementById('userInfo').textContent=user.user_metadata?.user_name||user.email||'';
-    initDate();buildP();buildKpiMonths();renderAll();
+    initDate();buildP();buildKpiMonths();buildAutocomplete();renderAll();
     if(metaMensal>0) document.getElementById('metaInput').value=metaMensal;
+    if(recontatoDias>0) document.getElementById('recontatoInput').value=recontatoDias;
   }catch(e){
     setLm('Erro: '+e.message);
     setTimeout(()=>{document.getElementById('loader').style.display='none';document.getElementById('loginScreen').style.display='flex';},2000);
@@ -512,6 +567,55 @@ function buildKpiMonths(){
 }
 
 function applyP(){period=document.getElementById('gp').value;renderAll()}
+
+/* ── AUTOCOMPLETE: produtos e clientes ── */
+function buildAutocomplete(){
+  productMemory={};
+  clientNamesSet=new Set();
+  // txs is ordered by date desc already (from initial fetch) — mas após inserts/edits pode não estar,
+  // então ordenamos por data para garantir que pegamos o registro mais recente de cada produto.
+  const sorted=[...txs].sort((a,b)=>a.date.localeCompare(b.date));
+  sorted.forEach(t=>{
+    const key=t.name.trim().toLowerCase();
+    productMemory[key]={name:t.name,cat:t.cat,cost:t.cost,price:t.price,date:t.date};
+    if(t.client&&t.client.trim())clientNamesSet.add(t.client.trim());
+  });
+  const dlP=document.getElementById('fNList');
+  if(dlP)dlP.innerHTML=Object.values(productMemory).map(p=>`<option value="${p.name}">`).join('');
+  const dlC=document.getElementById('fClientList');
+  if(dlC)dlC.innerHTML=[...clientNamesSet].map(c=>`<option value="${c}">`).join('');
+}
+
+function onProductInput(){
+  rc();
+  const key=document.getElementById('fN').value.trim().toLowerCase();
+  const hint=document.getElementById('fNHint');
+  if(!key){hint.textContent='';return}
+  const p=productMemory[key];
+  if(p){
+    document.getElementById('fC').value=p.cat;
+    document.getElementById('fCo').value=p.cost;
+    document.getElementById('fV').value=p.price;
+    rc();
+    const[y,m,d]=p.date.split('-');
+    hint.textContent=`🔄 Preço anterior carregado: custo ${fmt(p.cost)} · venda ${fmt(p.price)} (usado em ${d}/${m}/${y})`;
+  }else{
+    hint.textContent='';
+  }
+}
+
+function onClientInput(){
+  const raw=document.getElementById('fClient').value.trim();
+  const hint=document.getElementById('fClientHint');
+  if(!raw){hint.textContent='';hint.className='autofill-hint';return}
+  const match=[...clientNamesSet].find(c=>c.toLowerCase()===raw.toLowerCase());
+  if(!match){hint.textContent='';hint.className='autofill-hint';return}
+  const stats=getClientStats().find(c=>c.name.toLowerCase()===match.toLowerCase());
+  if(!stats){hint.textContent='';return}
+  const isOverdue=stats.daysSince>=recontatoDias;
+  hint.className='autofill-hint'+(isOverdue?' warn':'');
+  hint.textContent=`👤 Cliente conhecido: ${stats.compras} compra${stats.compras>1?'s':''} · última há ${stats.daysSince} dia${stats.daysSince!==1?'s':''}${isOverdue?' — bom momento pra reconectar!':''}`;
+}
 
 /* ── META MENSAL ── */
 function saveMeta(){
@@ -617,8 +721,10 @@ async function saveSale(){
     pendingItems=[];
     renderPending();
     document.getElementById('fClient').value='';
+    document.getElementById('fClientHint').textContent='';
+    document.getElementById('fNHint').textContent='';
     initDate();rc();
-    buildP();buildKpiMonths();renderAll();
+    buildP();buildKpiMonths();buildAutocomplete();renderAll();
     toast(`Venda salva! ${rows.length} item${rows.length>1?'s':''} registrado${rows.length>1?'s':''} ✓`);
   }catch(e){toast('Erro: '+e.message,true)}
   finally{btn.disabled=false;btn.textContent='Salvar venda'}
@@ -661,7 +767,7 @@ async function saveEdit(){
     if(error)throw error;
     const idx=txs.findIndex(x=>x.id===editingId);
     if(idx>=0)txs[idx]={...txs[idx],name,cat,qty,cost,price,date,client};
-    closeEdit();buildP();buildKpiMonths();renderAll();toast('Transação atualizada!');
+    closeEdit();buildP();buildKpiMonths();buildAutocomplete();renderAll();toast('Transação atualizada!');
   }catch(e){toast('Erro: '+e.message,true)}
   finally{btn.disabled=false;btn.textContent='Salvar alterações'}
 }
@@ -672,12 +778,80 @@ async function delTx(id){
   try{
     const{error}=await db.from('transactions').delete().eq('id',id);
     if(error)throw error;
-    txs=txs.filter(t=>t.id!==id);buildP();buildKpiMonths();renderAll();toast('Transação removida');
+    txs=txs.filter(t=>t.id!==id);buildP();buildKpiMonths();buildAutocomplete();renderAll();toast('Transação removida');
   }catch(e){toast('Erro: '+e.message,true)}
 }
 
 /* ── RENDER ── */
-function renderAll(){renderKPIs();rT();rM();rCh();}
+function renderAll(){renderKPIs();rT();rM();rCh();rClientes();}
+
+/* ── CLIENTES ── */
+function saveRecontato(){
+  recontatoDias=parseInt(document.getElementById('recontatoInput').value)||30;
+  localStorage.setItem('mtz_recontato',recontatoDias);
+  rClientes();rCh();toast('Preferência salva!');
+}
+
+function getClientStats(){
+  // Estatísticas vitalícias por cliente (não filtradas por período — histórico de relacionamento completo)
+  const byC={};
+  txs.filter(t=>t.client&&t.client.trim()).forEach(t=>{
+    const name=t.client.trim();
+    if(!byC[name])byC[name]={name,total:0,lucro:0,saleIds:new Set(),cats:{},lastDate:t.date};
+    const c=byC[name];
+    c.total+=t.price*t.qty;
+    c.lucro+=(t.price-t.cost)*t.qty;
+    c.saleIds.add(t.sale_id||t.id);
+    c.cats[t.cat]=(c.cats[t.cat]||0)+t.price*t.qty;
+    if(t.date>c.lastDate)c.lastDate=t.date;
+  });
+  const today=new Date();
+  return Object.values(byC).map(c=>{
+    const favCat=Object.entries(c.cats).sort((a,b)=>b[1]-a[1])[0]?.[0]||'other';
+    const last=new Date(c.lastDate+'T00:00:00');
+    const daysSince=Math.floor((today-last)/86400000);
+    return{name:c.name,total:c.total,lucro:c.lucro,compras:c.saleIds.size,favCat,lastDate:c.lastDate,daysSince};
+  });
+}
+
+function rClientes(){
+  const stats=getClientStats();
+  const s=(document.getElementById('srCli')?.value||'').toLowerCase();
+  const sortBy=document.getElementById('cliSort')?.value||'dias';
+  let list=stats.filter(c=>!s||c.name.toLowerCase().includes(s));
+  if(sortBy==='dias')list.sort((a,b)=>b.daysSince-a.daysSince);
+  else if(sortBy==='total')list.sort((a,b)=>b.total-a.total);
+  else list.sort((a,b)=>b.lastDate.localeCompare(a.lastDate));
+
+  const overdue=stats.filter(c=>c.daysSince>=recontatoDias);
+  const summary=document.getElementById('clientesSummary');
+  if(overdue.length){
+    summary.innerHTML=`<div class="cli-summary-banner">📞 <strong>${overdue.length} cliente${overdue.length>1?'s':''}</strong> sem comprar há ${recontatoDias}+ dias — pode ser um bom momento pra reconectar</div>`;
+  }else if(stats.length){
+    summary.innerHTML=`<div class="cli-summary-ok">✅ Todos os clientes estão ativos (compraram nos últimos ${recontatoDias} dias)</div>`;
+  }else{
+    summary.innerHTML='';
+  }
+
+  const tb=document.getElementById('cliB'),te=document.getElementById('cliE');
+  if(!list.length){tb.innerHTML='';te.style.display='block';return}
+  te.style.display='none';
+  tb.innerHTML=list.map(c=>{
+    const[y,mo,d]=c.lastDate.split('-');
+    let statusHtml;
+    if(c.daysSince>=recontatoDias*2)statusHtml=`<span class="status-hot">🔴 Recontatar</span>`;
+    else if(c.daysSince>=recontatoDias)statusHtml=`<span class="status-warn">🟡 Atenção</span>`;
+    else statusHtml=`<span class="status-ok">🟢 Ativo</span>`;
+    return`<tr>
+      <td style="font-weight:600">${c.name}</td>
+      <td class="mn" style="color:var(--sage)">${fmt(c.total)}</td>
+      <td class="mn" style="text-align:center">${c.compras}</td>
+      <td><span class="badge ${CB[c.favCat]}">${CL[c.favCat]}</span></td>
+      <td class="mn" style="font-size:.78rem;color:var(--tmu)">${d}/${mo}/${y} · ${c.daysSince}d atrás</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+}
 
 function renderKPIs(){
   const km=document.getElementById('kpiMonth')?.value||currentMonth();
@@ -825,6 +999,12 @@ function renderInsights(d){
   if(!d.length){document.getElementById('insightsList').innerHTML='<div style="color:var(--td);font-size:.8rem;padding:.5rem 0">Nenhum dado no período selecionado</div>';return}
 
   const insights=[];
+  // Recontato (destaque no topo — cliente mais tempo sem comprar, acima do limite configurado)
+  const cStats=getClientStats().filter(c=>c.daysSince>=recontatoDias).sort((a,b)=>b.daysSince-a.daysSince);
+  if(cStats.length){
+    const top=cStats[0];
+    insights.push({icon:'📞',label:'Recontato sugerido',value:top.name,sub:`${top.daysSince} dias sem comprar · ${fmt(top.total)} em compras · ${cStats.length>1?`+${cStats.length-1} outro(s)`:'ver aba Clientes'}`});
+  }
   // Melhor mês
   const bm={};
   txs.forEach(t=>{const k=t.date.slice(0,7);if(!bm[k])bm[k]=0;bm[k]+=(t.price-t.cost)*t.qty});
