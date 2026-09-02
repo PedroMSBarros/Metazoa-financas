@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -161,6 +160,8 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 .bp{background:rgba(197,212,154,.15);color:var(--sage)}
 .be{background:rgba(232,192,64,.15);color:var(--yellow)}
 .bo{background:rgba(122,104,72,.25);color:var(--tm)}
+.bx{background:rgba(167,139,250,.18);color:#a78bfa}
+.by{background:rgba(224,120,48,.18);color:var(--orange)}
 .mn{font-family:var(--mono)}.pp{color:var(--profit);font-weight:500}.pn{color:var(--loss);font-weight:500}
 .db2{background:none;border:1px solid transparent;color:var(--td);cursor:pointer;border-radius:5px;padding:.2rem .48rem;font-size:.75rem;transition:all .15s}
 .db2:hover{border-color:var(--loss);color:var(--loss)}
@@ -269,6 +270,7 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <button class="tb" onclick="showTab('lancamentos',this)">Lançamentos</button>
         <button class="tb" onclick="showTab('historico',this)">Histórico</button>
         <button class="tb" onclick="showTab('clientes',this)">Clientes</button>
+        <button class="tb" onclick="showTab('despesas',this)">Despesas</button>
         <button class="tb" onclick="showTab('mensal',this)">Mensal</button>
       </div>
     </div>
@@ -317,6 +319,9 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       </div>
       <div class="chg">
         <div class="chc" style="display:flex;flex-direction:column"><div class="chl">Margem por categoria</div><div id="mBars" style="margin-top:.25rem;flex:1"></div></div>
+        <div class="chc"><div class="chl">Despesas por categoria</div><div class="chb"><canvas id="cExp"></canvas></div></div>
+      </div>
+      <div class="chg">
         <div class="chc"><div class="chl">Insights</div><div id="insightsList"></div></div>
       </div>
     </div>
@@ -435,6 +440,64 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       <div id="cliE" class="empty" style="display:none"><div class="ei">👤</div><div>Nenhum cliente registrado ainda</div></div>
     </div>
 
+    <!-- DESPESAS -->
+    <div id="tab-despesas" class="tc">
+      <div class="fs">
+        <div class="stitle">Nova despesa / investimento</div>
+        <div class="fg">
+          <div class="fg2 s2"><label>Descrição</label><input id="exD_desc" type="text" placeholder="Ex: Anúncio Instagram, Ração Nutricon, Filtro canister..."></div>
+          <div class="fg2">
+            <label>Categoria</label>
+            <select id="exD_cat">
+              <option value="ads">📢 Marketing/Ads</option>
+              <option value="equip">🔧 Equipamento</option>
+              <option value="food">🍤 Ração/Suplementos</option>
+              <option value="meds">💊 Remédios/Tratamentos</option>
+              <option value="logistics">📦 Embalagens/Logística</option>
+              <option value="fixed">💡 Contas fixas</option>
+              <option value="other">📌 Outro</option>
+            </select>
+          </div>
+          <div class="fg2"><label>Valor (R$)</label><input id="exD_val" type="number" placeholder="0,00" step="0.01" min="0"></div>
+          <div class="fg2"><label>Data</label><input id="exD_date" type="date"></div>
+          <div class="fg2">
+            <label>Recorrente?</label>
+            <div class="pb" style="cursor:pointer" onclick="document.getElementById('exD_rec').click()">
+              <span class="pbl">Gasto fixo mensal</span>
+              <input id="exD_rec" type="checkbox" style="width:auto;accent-color:var(--green)">
+            </div>
+          </div>
+          <div class="fg2" style="justify-content:flex-end"><button class="btn" id="btnExpAdd" onclick="addExpense()">+ Registrar despesa</button></div>
+        </div>
+      </div>
+
+      <div class="cg" id="expKpis"></div>
+
+      <div class="th2">
+        <div class="stitle" style="margin:0">Histórico de despesas</div>
+        <div class="fr">
+          <input id="srExp" type="text" placeholder="Buscar despesa..." oninput="rExpenses()" style="width:190px">
+          <select id="fExpCat" onchange="rExpenses()">
+            <option value="all">Todas categorias</option>
+            <option value="ads">Marketing/Ads</option>
+            <option value="equip">Equipamento</option>
+            <option value="food">Ração/Suplementos</option>
+            <option value="meds">Remédios</option>
+            <option value="logistics">Embalagens/Logística</option>
+            <option value="fixed">Contas fixas</option>
+            <option value="other">Outro</option>
+          </select>
+        </div>
+      </div>
+      <div class="tw">
+        <table>
+          <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th style="text-align:center">Fixo</th><th></th></tr></thead>
+          <tbody id="expB"></tbody>
+        </table>
+      </div>
+      <div id="expE" class="empty" style="display:none"><div class="ei">💸</div><div>Nenhuma despesa registrada ainda</div></div>
+    </div>
+
     <!-- MENSAL -->
     <div id="tab-mensal" class="tc">
       <div class="mwrap">
@@ -467,6 +530,41 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
   </div>
 </div>
 
+<!-- EXPENSE EDIT MODAL -->
+<div class="modal-overlay" id="editExpModal">
+  <div class="modal-box">
+    <div class="modal-title">Editar despesa</div>
+    <div class="fg">
+      <div class="fg2 s2"><label>Descrição</label><input id="eexDesc" type="text"></div>
+      <div class="fg2">
+        <label>Categoria</label>
+        <select id="eexCat">
+          <option value="ads">📢 Marketing/Ads</option>
+          <option value="equip">🔧 Equipamento</option>
+          <option value="food">🍤 Ração/Suplementos</option>
+          <option value="meds">💊 Remédios/Tratamentos</option>
+          <option value="logistics">📦 Embalagens/Logística</option>
+          <option value="fixed">💡 Contas fixas</option>
+          <option value="other">📌 Outro</option>
+        </select>
+      </div>
+      <div class="fg2"><label>Valor (R$)</label><input id="eexVal" type="number" step="0.01" min="0"></div>
+      <div class="fg2"><label>Data</label><input id="eexDate" type="date"></div>
+      <div class="fg2">
+        <label>Recorrente?</label>
+        <div class="pb" style="cursor:pointer" onclick="document.getElementById('eexRec').click()">
+          <span class="pbl">Gasto fixo mensal</span>
+          <input id="eexRec" type="checkbox" style="width:auto;accent-color:var(--green)">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeEditExp()">Cancelar</button>
+      <button class="btn" id="btnEditExpSave" onclick="saveEditExp()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -477,9 +575,11 @@ const db=createClient(SU,SK);
 
 const MOS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MOF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-let txs=[],period='all',chL,chRC,chC,chTop;
+let txs=[],period='all',chL,chRC,chC,chTop,chExp;
 let pendingItems=[];
 let editingId=null;
+let editingExpId=null;
+let expenses=[];
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -511,11 +611,16 @@ async function loadApp(user){
     const{data,error}=await db.from('transactions').select('*').order('date',{ascending:false});
     if(error)throw error;
     txs=data||[];
+    const{data:expData,error:expError}=await db.from('expenses').select('*').order('date',{ascending:false});
+    if(expError)throw expError;
+    expenses=expData||[];
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
     if(user) document.getElementById('userInfo').textContent=user.user_metadata?.user_name||user.email||'';
-    initDate();buildP();buildKpiMonths();buildAutocomplete();renderAll();
+    initDate();
+    document.getElementById('exD_date').value=new Date().toISOString().split('T')[0];
+    buildP();buildKpiMonths();buildAutocomplete();renderAll();
     if(metaMensal>0) document.getElementById('metaInput').value=metaMensal;
     if(recontatoDias>0) document.getElementById('recontatoInput').value=recontatoDias;
   }catch(e){
@@ -782,8 +887,126 @@ async function delTx(id){
   }catch(e){toast('Erro: '+e.message,true)}
 }
 
+/* ── DESPESAS ── */
+async function addExpense(){
+  const desc=document.getElementById('exD_desc').value.trim();
+  const cat=document.getElementById('exD_cat').value;
+  const amount=parseFloat(document.getElementById('exD_val').value);
+  const date=document.getElementById('exD_date').value;
+  const recurring=document.getElementById('exD_rec').checked;
+  if(!desc){toast('Digite a descrição da despesa',true);return}
+  if(isNaN(amount)||amount<=0){toast('Informe um valor válido',true);return}
+  if(!date){toast('Informe a data',true);return}
+  const btn=document.getElementById('btnExpAdd');
+  btn.disabled=true;btn.textContent='Salvando...';
+  const row={id:Date.now()+'',description:desc,category:cat,amount,date,recurring};
+  try{
+    const{error}=await db.from('expenses').insert([row]);
+    if(error)throw error;
+    expenses.unshift(row);
+    document.getElementById('exD_desc').value='';
+    document.getElementById('exD_val').value='';
+    document.getElementById('exD_rec').checked=false;
+    document.getElementById('exD_date').value=new Date().toISOString().split('T')[0];
+    renderAll();
+    toast('Despesa registrada! ✓');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='+ Registrar despesa'}
+}
+
+async function delExpense(id){
+  if(!confirm('Excluir esta despesa?'))return;
+  try{
+    const{error}=await db.from('expenses').delete().eq('id',id);
+    if(error)throw error;
+    expenses=expenses.filter(e=>e.id!==id);renderAll();toast('Despesa removida');
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+function openEditExp(id){
+  const e=expenses.find(x=>x.id===id);
+  if(!e)return;
+  editingExpId=id;
+  document.getElementById('eexDesc').value=e.description;
+  document.getElementById('eexCat').value=e.category;
+  document.getElementById('eexVal').value=e.amount;
+  document.getElementById('eexDate').value=e.date;
+  document.getElementById('eexRec').checked=!!e.recurring;
+  document.getElementById('editExpModal').classList.add('open');
+}
+function closeEditExp(){
+  editingExpId=null;
+  document.getElementById('editExpModal').classList.remove('open');
+}
+async function saveEditExp(){
+  if(!editingExpId)return;
+  const description=document.getElementById('eexDesc').value.trim();
+  const category=document.getElementById('eexCat').value;
+  const amount=parseFloat(document.getElementById('eexVal').value);
+  const date=document.getElementById('eexDate').value;
+  const recurring=document.getElementById('eexRec').checked;
+  if(!description||isNaN(amount)||amount<=0||!date){toast('Preencha todos os campos',true);return}
+  const btn=document.getElementById('btnEditExpSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const{error}=await db.from('expenses').update({description,category,amount,date,recurring}).eq('id',editingExpId);
+    if(error)throw error;
+    const idx=expenses.findIndex(x=>x.id===editingExpId);
+    if(idx>=0)expenses[idx]={...expenses[idx],description,category,amount,date,recurring};
+    closeEditExp();renderAll();toast('Despesa atualizada!');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar alterações'}
+}
+
+function expensesFiltered(){return period==='all'?expenses:expenses.filter(e=>e.date.slice(0,7)===period)}
+
+function rExpenses(){
+  const s=(document.getElementById('srExp')?.value||'').toLowerCase();
+  const fc=document.getElementById('fExpCat')?.value||'all';
+  const data=expensesFiltered().filter(e=>(fc==='all'||e.category===fc)&&(!s||e.description.toLowerCase().includes(s))).sort((a,b)=>b.date.localeCompare(a.date));
+  const tb=document.getElementById('expB'),te=document.getElementById('expE');
+  if(tb){
+    if(!data.length){tb.innerHTML='';if(te)te.style.display='block';}
+    else{
+      if(te)te.style.display='none';
+      tb.innerHTML=data.map(e=>{
+        const[y,mo,d]=e.date.split('-');
+        return`<tr>
+          <td class="mn" style="font-size:.78rem;color:var(--tmu)">${d}/${mo}/${y}</td>
+          <td style="font-weight:600">${e.description}</td>
+          <td><span class="badge ${EB[e.category]}">${EL[e.category]}</span></td>
+          <td class="mn" style="color:var(--orange)">${fmt(e.amount)}</td>
+          <td style="text-align:center">${e.recurring?'🔁':'—'}</td>
+          <td style="white-space:nowrap">
+            <button class="edit-btn" onclick="openEditExp('${e.id}')" title="Editar">✏️</button>
+            <button class="db2" onclick="delExpense('${e.id}')" title="Excluir">✕</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // KPIs da aba Despesas
+  const km=document.getElementById('kpiMonth')?.value||currentMonth();
+  const monthExp=expenses.filter(e=>e.date.slice(0,7)===km);
+  const totalMonth=monthExp.reduce((a,e)=>a+e.amount,0);
+  const fixedMonth=monthExp.filter(e=>e.recurring).reduce((a,e)=>a+e.amount,0);
+  const totalAll=expenses.reduce((a,e)=>a+e.amount,0);
+  const byCat={};
+  monthExp.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+e.amount});
+  const topCat=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
+  const expKpisEl=document.getElementById('expKpis');
+  if(expKpisEl){
+    expKpisEl.innerHTML=`
+      <div class="card co"><div class="cl">Despesas este mês</div><div class="cv o">${fmt(totalMonth)}</div><div class="csub">${monthExp.length} lançamento${monthExp.length!==1?'s':''}</div></div>
+      <div class="card cy"><div class="cl">Gastos fixos/mês</div><div class="cv y">${fmt(fixedMonth)}</div><div class="csub">recorrentes marcados</div></div>
+      <div class="card cp"><div class="cl">Maior categoria</div><div class="cv p" style="font-size:1.1rem">${topCat?EL[topCat[0]]:'—'}</div><div class="csub">${topCat?fmt(topCat[1]):'sem dados este mês'}</div></div>
+      <div class="card cs"><div class="cl">Total investido (histórico)</div><div class="cv s">${fmt(totalAll)}</div><div class="csub">desde o início</div></div>`;
+  }
+}
+
 /* ── RENDER ── */
-function renderAll(){renderKPIs();rT();rM();rCh();rClientes();}
+function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();}
 
 /* ── CLIENTES ── */
 function saveRecontato(){
@@ -874,6 +1097,12 @@ function renderKPIs(){
   const saleIds=[...new Set(d.map(t=>t.sale_id||t.id))];
   const ticket=saleIds.length>0?rec/saleIds.length:0;
 
+  // Despesas do mês e lucro real
+  const expMonth=expenses.filter(e=>e.date.slice(0,7)===km).reduce((a,e)=>a+e.amount,0);
+  const expPrev=expenses.filter(e=>e.date.slice(0,7)===prev).reduce((a,e)=>a+e.amount,0);
+  const lucroReal=luc-expMonth;
+  const lucroRealPrev=pluc-expPrev;
+
   function delta(cur,prv){
     if(!prv)return'<span class="cdelta nt">sem dados anteriores</span>';
     const d=((cur-prv)/prv)*100;
@@ -884,16 +1113,20 @@ function renderKPIs(){
 
   document.getElementById('kpis').innerHTML=`
     <div class="card cs"><div class="cl">Receita total</div><div class="cv s">${fmt(rec)}</div>${delta(rec,prec)}<div class="csub">${qty} unidades vendidas</div></div>
-    <div class="card co"><div class="cl">Custo total</div><div class="cv o">${fmt(cst)}</div>${delta(cst,pcst)}<div class="csub">Valor investido</div></div>
+    <div class="card co"><div class="cl">Custo total</div><div class="cv o">${fmt(cst)}</div>${delta(cst,pcst)}<div class="csub">Valor investido em produtos</div></div>
     <div class="card cg2"><div class="cl">Lucro líquido</div><div class="cv ${luc>=0?'g':'r'}">${fmt(luc)}</div>${delta(luc,pluc)}<div class="csub">Margem: ${pct(mrg)}</div></div>
     <div class="card cy"><div class="cl">Nº de vendas</div><div class="cv y">${saleIds.length}</div><div class="csub">${d.length} itens registrados</div></div>
     <div class="card cp"><div class="cl">Ticket médio</div><div class="cv p">${fmt(ticket)}</div><div class="csub">por venda este mês</div></div>
+    <div class="card co"><div class="cl">Despesas do mês</div><div class="cv o">${fmt(expMonth)}</div>${delta(expMonth,expPrev)}<div class="csub">ads, ração, equipamento...</div></div>
+    <div class="card cg2"><div class="cl">Lucro real</div><div class="cv ${lucroReal>=0?'g':'r'}">${fmt(lucroReal)}</div>${delta(lucroReal,lucroRealPrev)}<div class="csub">lucro líquido − despesas</div></div>
   `;
   renderMetaBar();
 }
 
 const CL={fish:'🐟 Peixe/Animal',plant:'🌿 Planta',equip:'⚙️ Equip.',other:'📦 Outro'};
 const CB={fish:'bf',plant:'bp',equip:'be',other:'bo'};
+const EL={ads:'📢 Marketing/Ads',equip:'🔧 Equipamento',food:'🍤 Ração/Suplementos',meds:'💊 Remédios',logistics:'📦 Embalagens',fixed:'💡 Contas fixas',other:'📌 Outro'};
+const EB={ads:'bo',equip:'be',food:'bf',meds:'bx',logistics:'bp',fixed:'by',other:'bo'};
 
 function rT(){
   const s=document.getElementById('sr').value.toLowerCase();
@@ -991,6 +1224,19 @@ function rCh(){
     return`<div class="mb-item"><div class="mb-row"><span class="mb-name">${x.l}</span><span class="mb-val" style="color:${x.c}">${pct(m)}</span></div><div class="mb-track"><div class="mb-fill" style="width:${Math.min(m,100).toFixed(1)}%;background:${x.c}"></div></div></div>`;
   }).join('');
 
+  // Despesas por categoria (respeitando o período selecionado)
+  const de=expensesFiltered();
+  const be={ads:0,equip:0,food:0,meds:0,logistics:0,fixed:0,other:0};
+  de.forEach(e=>{be[e.category]=(be[e.category]||0)+e.amount});
+  if(chExp)chExp.destroy();
+  const expTotal=Object.values(be).reduce((a,v)=>a+v,0);
+  if(expTotal>0){
+    chExp=new Chart(document.getElementById('cExp'),{type:'doughnut',data:{
+      labels:['Marketing/Ads','Equipamento','Ração/Suplementos','Remédios','Embalagens','Contas fixas','Outro'],
+      datasets:[{data:[be.ads,be.equip,be.food,be.meds,be.logistics,be.fixed,be.other],backgroundColor:['rgba(122,104,72,.75)','rgba(232,192,64,.8)','rgba(77,158,31,.8)','rgba(167,139,250,.8)','rgba(197,212,154,.8)','rgba(224,120,48,.8)','rgba(122,104,72,.4)'],borderWidth:0,hoverOffset:6}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#b8a888',font:{family:'Syne',size:10},padding:8,boxWidth:10}},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)}}}}});
+  }
+
   // Insights
   renderInsights(d);
 }
@@ -1036,6 +1282,17 @@ function renderInsights(d){
   const mgIcon=mg>=50?'🟢':mg>=30?'🟡':'🔴';
   insights.push({icon:mgIcon,label:'Margem geral',value:pct(mg),sub:mg>=50?'Excelente!':mg>=30?'Boa, pode melhorar':'Atenção: margem baixa'});
 
+  // Despesas consumindo o lucro
+  const lucBruto=rec-cst;
+  const expNoPeriodo=expensesFiltered().reduce((a,e)=>a+e.amount,0);
+  if(expNoPeriodo>0&&lucBruto>0){
+    const consumo=(expNoPeriodo/lucBruto)*100;
+    const cIcon=consumo>=70?'🔴':consumo>=40?'🟡':'🟢';
+    insights.push({icon:cIcon,label:'Despesas vs lucro',value:pct(consumo),sub:consumo>=70?'Despesas consumindo grande parte do lucro':`${fmt(lucBruto-expNoPeriodo)} de lucro real no período`});
+  }else if(expNoPeriodo>0&&lucBruto<=0){
+    insights.push({icon:'🔴',label:'Despesas vs lucro',value:fmt(expNoPeriodo),sub:'Sem lucro bruto no período — despesas não cobertas'});
+  }
+
   document.getElementById('insightsList').innerHTML=insights.map(x=>`
     <div class="insight-card" style="margin-bottom:.6rem;padding:.85rem 1rem">
       <div class="insight-icon">${x.icon}</div>
@@ -1066,6 +1323,7 @@ function toast(msg,err){
 
 // Close modal on overlay click
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeEdit()});
+document.getElementById('editExpModal').addEventListener('click',function(e){if(e.target===this)closeEditExp()});
 
 boot();
 </script>
