@@ -124,6 +124,30 @@ select option{background:var(--bm)}
 .cli-summary-banner{background:rgba(217,80,48,.1);border:1px solid rgba(217,80,48,.3);border-radius:10px;padding:.85rem 1.1rem;margin-top:1rem;font-size:.84rem;color:#f0a888;display:flex;align-items:center;gap:.6rem}
 .cli-summary-ok{background:rgba(106,191,53,.08);border:1px solid rgba(106,191,53,.25);border-radius:10px;padding:.85rem 1.1rem;margin-top:1rem;font-size:.84rem;color:var(--sage);display:flex;align-items:center;gap:.6rem}
 
+/* SALE GROUPS (Histórico) */
+.sale-group{background:var(--bc);border:1px solid var(--bor);border-radius:12px;margin-bottom:.85rem;overflow:hidden}
+.sale-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;cursor:pointer;gap:1rem;flex-wrap:wrap}
+.sale-header:hover{background:rgba(197,212,154,.03)}
+.sale-head-left{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;min-width:0}
+.sale-client{font-weight:700;font-size:.92rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.sale-client.anon{color:var(--tmu);font-weight:600;font-style:italic}
+.sale-date{font-family:var(--mono);font-size:.75rem;color:var(--tmu);white-space:nowrap}
+.sale-count{font-size:.7rem;color:var(--td);background:var(--bm);padding:.15rem .5rem;border-radius:999px;white-space:nowrap}
+.sale-head-right{display:flex;align-items:center;gap:1rem;flex-shrink:0}
+.sale-total{font-family:var(--mono);font-size:.9rem;color:var(--sage);font-weight:500}
+.sale-profit{font-family:var(--mono);font-size:.82rem;font-weight:500}
+.sale-chevron{color:var(--tmu);font-size:.75rem;transition:transform .2s}
+.sale-group.open .sale-chevron{transform:rotate(180deg)}
+.sale-body{display:none;border-top:1px solid var(--bor)}
+.sale-group.open .sale-body{display:block}
+.sale-items table{width:100%;border-collapse:collapse;font-size:.82rem}
+.sale-items thead tr{background:var(--bm)}
+.sale-items th{padding:.55rem .9rem;text-align:left;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--tmu);font-weight:600}
+.sale-items td{padding:.6rem .9rem;border-top:1px solid rgba(197,212,154,.06)}
+.sale-freight{display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.1rem;background:rgba(197,212,154,.03);border-top:1px solid rgba(197,212,154,.06);font-size:.78rem;color:var(--tm);flex-wrap:wrap;gap:.5rem}
+.sale-freight-edit{background:none;border:1px solid var(--bor2);color:var(--tmu);cursor:pointer;border-radius:5px;padding:.15rem .5rem;font-size:.72rem;transition:all .15s}
+.sale-freight-edit:hover{border-color:var(--sage);color:var(--sage)}
+
 /* PENDING ITEMS */
 .pending-section{margin-top:1.25rem}
 .pending-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
@@ -341,6 +365,14 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
             <label>Data da Venda</label>
             <input id="fD" type="date">
           </div>
+          <div class="fg2">
+            <label>Frete cobrado do cliente (R$)</label>
+            <input id="fFreteC" type="number" placeholder="0,00" step="0.01" min="0" value="0">
+          </div>
+          <div class="fg2">
+            <label>Custo real do frete (R$)</label>
+            <input id="fFreteV" type="number" placeholder="0,00" step="0.01" min="0" value="0">
+          </div>
         </div>
 
         <div style="border-top:1px solid var(--bor);margin:1.25rem 0;padding-top:1.25rem">
@@ -383,22 +415,13 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
     <!-- HISTÓRICO -->
     <div id="tab-historico" class="tc">
       <div class="th2">
-        <div class="stitle" style="margin:0">Histórico de transações</div>
+        <div class="stitle" style="margin:0">Histórico de vendas</div>
         <div class="fr">
           <input id="sr" type="text" placeholder="Buscar produto ou cliente..." oninput="rT()" style="width:210px">
-          <select id="fCat" onchange="rT()"><option value="all">Todas</option><option value="fish">Peixe/Animal</option><option value="plant">Planta</option><option value="equip">Equipamento</option><option value="other">Outro</option></select>
+          <select id="fCat" onchange="rT()"><option value="all">Todas categorias</option><option value="fish">Peixe/Animal</option><option value="plant">Planta</option><option value="equip">Equipamento</option><option value="other">Outro</option></select>
         </div>
       </div>
-      <div class="tw">
-        <table>
-          <thead><tr>
-            <th>Data</th><th>Produto</th><th>Cliente</th><th>Cat.</th>
-            <th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th>
-            <th>Lucro</th><th>Margem</th><th></th>
-          </tr></thead>
-          <tbody id="tB"></tbody>
-        </table>
-      </div>
+      <div id="saleGroups"></div>
       <div id="tE" class="empty" style="display:none"><div class="ei">🐡</div><div>Nenhuma transação encontrada</div></div>
     </div>
 
@@ -580,6 +603,7 @@ let pendingItems=[];
 let editingId=null;
 let editingExpId=null;
 let expenses=[];
+let salesMeta={};
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -614,6 +638,10 @@ async function loadApp(user){
     const{data:expData,error:expError}=await db.from('expenses').select('*').order('date',{ascending:false});
     if(expError)throw expError;
     expenses=expData||[];
+    const{data:salesData,error:salesError}=await db.from('sales').select('*');
+    if(salesError)throw salesError;
+    salesMeta={};
+    (salesData||[]).forEach(s=>{salesMeta[s.id]=s});
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -810,6 +838,8 @@ async function saveSale(){
   if(!pendingItems.length){toast('Adicione pelo menos um item',true);return}
   const date=document.getElementById('fD').value;
   const client=document.getElementById('fClient').value.trim();
+  const freteC=parseFloat(document.getElementById('fFreteC').value)||0;
+  const freteV=parseFloat(document.getElementById('fFreteV').value)||0;
   if(!date){toast('Informe a data',true);return}
   const btn=document.getElementById('btnSave');
   btn.disabled=true;btn.textContent='Salvando...';
@@ -819,15 +849,21 @@ async function saveSale(){
     name:p.nome,cat:p.cat,qty:p.qty,cost:p.cost,price:p.price,
     date,client,sale_id:saleId
   }));
+  const saleRow={id:saleId,client,date,freight_charged:freteC,freight_cost:freteV};
   try{
     const{error}=await db.from('transactions').insert(rows);
     if(error)throw error;
+    const{error:saleError}=await db.from('sales').insert([saleRow]);
+    if(saleError)throw saleError;
     txs=rows.concat(txs);
+    salesMeta[saleId]=saleRow;
     pendingItems=[];
     renderPending();
     document.getElementById('fClient').value='';
     document.getElementById('fClientHint').textContent='';
     document.getElementById('fNHint').textContent='';
+    document.getElementById('fFreteC').value='0';
+    document.getElementById('fFreteV').value='0';
     initDate();rc();
     buildP();buildKpiMonths();buildAutocomplete();renderAll();
     toast(`Venda salva! ${rows.length} item${rows.length>1?'s':''} registrado${rows.length>1?'s':''} ✓`);
@@ -1097,11 +1133,17 @@ function renderKPIs(){
   const saleIds=[...new Set(d.map(t=>t.sale_id||t.id))];
   const ticket=saleIds.length>0?rec/saleIds.length:0;
 
-  // Despesas do mês e lucro real
+  // Despesas do mês e lucro real (incluindo frete)
   const expMonth=expenses.filter(e=>e.date.slice(0,7)===km).reduce((a,e)=>a+e.amount,0);
   const expPrev=expenses.filter(e=>e.date.slice(0,7)===prev).reduce((a,e)=>a+e.amount,0);
-  const lucroReal=luc-expMonth;
-  const lucroRealPrev=pluc-expPrev;
+  const salesMonth=Object.values(salesMeta).filter(s=>s.date.slice(0,7)===km);
+  const salesPrevM=Object.values(salesMeta).filter(s=>s.date.slice(0,7)===prev);
+  const freteCobrado=salesMonth.reduce((a,s)=>a+(s.freight_charged||0),0);
+  const freteCusto=salesMonth.reduce((a,s)=>a+(s.freight_cost||0),0);
+  const freteLucro=freteCobrado-freteCusto;
+  const freteLucroPrev=salesPrevM.reduce((a,s)=>a+(s.freight_charged||0),0)-salesPrevM.reduce((a,s)=>a+(s.freight_cost||0),0);
+  const lucroReal=luc+freteLucro-expMonth;
+  const lucroRealPrev=pluc+freteLucroPrev-expPrev;
 
   function delta(cur,prv){
     if(!prv)return'<span class="cdelta nt">sem dados anteriores</span>';
@@ -1118,7 +1160,8 @@ function renderKPIs(){
     <div class="card cy"><div class="cl">Nº de vendas</div><div class="cv y">${saleIds.length}</div><div class="csub">${d.length} itens registrados</div></div>
     <div class="card cp"><div class="cl">Ticket médio</div><div class="cv p">${fmt(ticket)}</div><div class="csub">por venda este mês</div></div>
     <div class="card co"><div class="cl">Despesas do mês</div><div class="cv o">${fmt(expMonth)}</div>${delta(expMonth,expPrev)}<div class="csub">ads, ração, equipamento...</div></div>
-    <div class="card cg2"><div class="cl">Lucro real</div><div class="cv ${lucroReal>=0?'g':'r'}">${fmt(lucroReal)}</div>${delta(lucroReal,lucroRealPrev)}<div class="csub">lucro líquido − despesas</div></div>
+    <div class="card ${freteLucro>=0?'cs':'co'}"><div class="cl">Frete (lucro/prej.)</div><div class="cv ${freteLucro>=0?'s':'r'}">${fmt(freteLucro)}</div><div class="csub">cobrado ${fmt(freteCobrado)} · custo ${fmt(freteCusto)}</div></div>
+    <div class="card cg2"><div class="cl">Lucro real</div><div class="cv ${lucroReal>=0?'g':'r'}">${fmt(lucroReal)}</div>${delta(lucroReal,lucroRealPrev)}<div class="csub">produtos + frete − despesas</div></div>
   `;
   renderMetaBar();
 }
@@ -1128,35 +1171,119 @@ const CB={fish:'bf',plant:'bp',equip:'be',other:'bo'};
 const EL={ads:'📢 Marketing/Ads',equip:'🔧 Equipamento',food:'🍤 Ração/Suplementos',meds:'💊 Remédios',logistics:'📦 Embalagens',fixed:'💡 Contas fixas',other:'📌 Outro'};
 const EB={ads:'bo',equip:'be',food:'bf',meds:'bx',logistics:'bp',fixed:'by',other:'bo'};
 
+let openSaleGroups=new Set();
+
 function rT(){
   const s=document.getElementById('sr').value.toLowerCase();
   const fc=document.getElementById('fCat').value;
-  const data=filtered().filter(t=>
-    (fc==='all'||t.cat===fc)&&
-    (!s||t.name.toLowerCase().includes(s)||(t.client||'').toLowerCase().includes(s))
-  ).sort((a,b)=>b.date.localeCompare(a.date));
-  const tb=document.getElementById('tB'),te=document.getElementById('tE');
-  if(!data.length){tb.innerHTML='';te.style.display='block';return}
+
+  // Agrupa por sale_id (vendas com múltiplos itens) — legado sem sale_id vira grupo de 1 item
+  const groupsMap={};
+  filtered().forEach(t=>{
+    const key=(t.sale_id&&t.sale_id.trim())?t.sale_id:'single_'+t.id;
+    if(!groupsMap[key])groupsMap[key]={saleId:key,client:t.client||'',date:t.date,items:[],isLegacy:!(t.sale_id&&t.sale_id.trim())};
+    groupsMap[key].items.push(t);
+    if(t.date>groupsMap[key].date)groupsMap[key].date=t.date;
+  });
+
+  let groups=Object.values(groupsMap).filter(g=>{
+    const catMatch=fc==='all'||g.items.some(t=>t.cat===fc);
+    const searchMatch=!s||g.client.toLowerCase().includes(s)||g.items.some(t=>t.name.toLowerCase().includes(s));
+    return catMatch&&searchMatch;
+  }).sort((a,b)=>b.date.localeCompare(a.date));
+
+  const wrap=document.getElementById('saleGroups'),te=document.getElementById('tE');
+  if(!groups.length){wrap.innerHTML='';te.style.display='block';return}
   te.style.display='none';
-  tb.innerHTML=data.map(t=>{
-    const l=(t.price-t.cost)*t.qty,m=t.price>0?((t.price-t.cost)/t.price)*100:0;
-    const[y,mo,d]=t.date.split('-');
-    return`<tr>
-      <td class="mn" style="font-size:.78rem;color:var(--tmu)">${d}/${mo}/${y}</td>
-      <td style="font-weight:600">${t.name}</td>
-      <td style="color:var(--tm);font-size:.82rem">${t.client||'—'}</td>
-      <td><span class="badge ${CB[t.cat]}">${CL[t.cat]}</span></td>
-      <td class="mn" style="text-align:center">${t.qty}</td>
-      <td class="mn" style="color:var(--orange)">${fmt(t.cost)}</td>
-      <td class="mn" style="color:var(--sage)">${fmt(t.price)}</td>
-      <td class="mn ${l>=0?'pp':'pn'}">${fmt(l)}</td>
-      <td class="mn" style="font-size:.78rem;color:var(--tmu)">${pct(m)}</td>
-      <td style="white-space:nowrap">
-        <button class="edit-btn" onclick="openEdit('${t.id}')" title="Editar">✏️</button>
-        <button class="db2" onclick="delTx('${t.id}')" title="Excluir">✕</button>
-      </td>
-    </tr>`;
+
+  wrap.innerHTML=groups.map(g=>{
+    const totalRec=g.items.reduce((a,t)=>a+t.price*t.qty,0);
+    const totalCst=g.items.reduce((a,t)=>a+t.cost*t.qty,0);
+    const totalLuc=totalRec-totalCst;
+    const qtyTotal=g.items.reduce((a,t)=>a+t.qty,0);
+    const[y,mo,d]=g.date.split('-');
+    const isOpen=openSaleGroups.has(g.saleId);
+    const meta=salesMeta[g.saleId];
+    const hasFreight=meta&&(meta.freight_charged>0||meta.freight_cost>0);
+
+    const itemsHtml=g.items.map(t=>{
+      const l=(t.price-t.cost)*t.qty,m=t.price>0?((t.price-t.cost)/t.price)*100:0;
+      return`<tr>
+        <td style="font-weight:600">${t.name}</td>
+        <td><span class="badge ${CB[t.cat]}">${CL[t.cat]}</span></td>
+        <td class="mn" style="text-align:center">${t.qty}</td>
+        <td class="mn" style="color:var(--orange)">${fmt(t.cost)}</td>
+        <td class="mn" style="color:var(--sage)">${fmt(t.price)}</td>
+        <td class="mn ${l>=0?'pp':'pn'}">${fmt(l)}</td>
+        <td class="mn" style="font-size:.76rem;color:var(--tmu)">${pct(m)}</td>
+        <td style="white-space:nowrap">
+          <button class="edit-btn" onclick="event.stopPropagation();openEdit('${t.id}')" title="Editar">✏️</button>
+          <button class="db2" onclick="event.stopPropagation();delTx('${t.id}')" title="Excluir">✕</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const freightHtml=g.isLegacy?'':`
+      <div class="sale-freight">
+        <span>🚚 Frete: ${meta?`cobrado ${fmt(meta.freight_charged||0)} · custo ${fmt(meta.freight_cost||0)} · ${(meta.freight_charged||0)-(meta.freight_cost||0)>=0?'lucro':'prejuízo'} ${fmt(Math.abs((meta.freight_charged||0)-(meta.freight_cost||0)))}`:'não informado'}</span>
+        <button class="sale-freight-edit" onclick="event.stopPropagation();openEditFreight('${g.saleId}')">✏️ Editar frete</button>
+      </div>`;
+
+    return`<div class="sale-group ${isOpen?'open':''}" id="sg_${g.saleId}">
+      <div class="sale-header" onclick="toggleSaleGroup('${g.saleId}')">
+        <div class="sale-head-left">
+          <span class="sale-client ${g.client?'':'anon'}">${g.client||'Venda avulsa'}</span>
+          <span class="sale-date">${d}/${mo}/${y}</span>
+          <span class="sale-count">${g.items.length} ${g.items.length>1?'itens':'item'} · ${qtyTotal}un${hasFreight?' · 🚚':''}</span>
+        </div>
+        <div class="sale-head-right">
+          <span class="sale-total">${fmt(totalRec)}</span>
+          <span class="sale-profit ${totalLuc>=0?'pp':'pn'}">${fmt(totalLuc)}</span>
+          <span class="sale-chevron">▼</span>
+        </div>
+      </div>
+      <div class="sale-body">
+        <div class="sale-items tw" style="border:none;border-radius:0">
+          <table>
+            <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th><th>Lucro</th><th>Margem</th><th></th></tr></thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+        </div>
+        ${freightHtml}
+      </div>
+    </div>`;
   }).join('');
+}
+
+function toggleSaleGroup(saleId){
+  if(openSaleGroups.has(saleId))openSaleGroups.delete(saleId);
+  else openSaleGroups.add(saleId);
+  const el=document.getElementById('sg_'+saleId);
+  if(el)el.classList.toggle('open');
+}
+
+async function openEditFreight(saleId){
+  const meta=salesMeta[saleId]||{freight_charged:0,freight_cost:0};
+  const cobrado=prompt('Valor cobrado do cliente pelo frete (R$):',meta.freight_charged||0);
+  if(cobrado===null)return;
+  const custo=prompt('Custo real do frete (R$):',meta.freight_cost||0);
+  if(custo===null)return;
+  const freight_charged=parseFloat(cobrado)||0;
+  const freight_cost=parseFloat(custo)||0;
+  try{
+    if(salesMeta[saleId]){
+      const{error}=await db.from('sales').update({freight_charged,freight_cost}).eq('id',saleId);
+      if(error)throw error;
+    }else{
+      // grupo antigo sem registro em sales — cria um novo vinculado ao sale_id existente
+      const g=filtered().find(t=>t.sale_id===saleId);
+      const row={id:saleId,client:g?.client||'',date:g?.date||new Date().toISOString().split('T')[0],freight_charged,freight_cost};
+      const{error}=await db.from('sales').insert([row]);
+      if(error)throw error;
+    }
+    salesMeta[saleId]={...(salesMeta[saleId]||{id:saleId}),freight_charged,freight_cost};
+    renderAll();toast('Frete atualizado!');
+  }catch(e){toast('Erro: '+e.message,true)}
 }
 
 function rM(){
