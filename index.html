@@ -69,8 +69,9 @@ header{border-bottom:1px solid var(--bor);background:rgba(14,7,2,.92);position:s
 .logout-btn:hover{border-color:var(--loss);color:var(--loss)}
 
 /* TABS */
-.tabs{display:flex;border-bottom:1px solid var(--bor)}
-.tb{background:none;border:none;color:var(--tmu);font-family:var(--font);font-size:.82rem;font-weight:600;padding:.8rem 1.1rem;cursor:pointer;letter-spacing:.05em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;text-transform:uppercase}
+.tabs{display:flex;border-bottom:1px solid var(--bor);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tb{background:none;border:none;color:var(--tmu);font-family:var(--font);font-size:.82rem;font-weight:600;padding:.8rem 1.1rem;cursor:pointer;letter-spacing:.05em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;text-transform:uppercase;flex-shrink:0}
 .tb.active{color:var(--sage);border-color:var(--sage)}
 .tb:hover:not(.active){color:var(--text)}
 
@@ -280,9 +281,47 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 @media(max-width:600px){
   .fg{grid-template-columns:1fr}.s2,.s3{grid-column:span 1}
   .cg{grid-template-columns:1fr 1fr}
-  th:nth-child(4),td:nth-child(4),th:nth-child(9),td:nth-child(9){display:none}
   .user-info{display:none}
-  .pending-item{grid-template-columns:1fr auto}
+
+  /* Cabeçalho mais compacto */
+  .hi{gap:.5rem}
+  .dbs span{display:none}
+  .psel{max-width:118px;padding:.38rem .5rem;font-size:.76rem}
+  .logout-btn{padding:.35rem .55rem}
+
+  /* Colunas específicas escondidas por tabela (não genérico!) */
+  #tab-despesas table th:nth-child(5),#tab-despesas table td:nth-child(5){display:none}
+  .sale-items table th:nth-child(7),.sale-items table td:nth-child(7){display:none}
+  #tab-clientes table th:nth-child(4),#tab-clientes table td:nth-child(4){display:none}
+
+  /* Cartão de item pendente empilhado, com botão remover fixo */
+  .pending-item{display:flex;flex-direction:column;align-items:stretch;gap:.25rem;position:relative;padding-right:2.3rem}
+  .pending-item .pi-remove{position:absolute;top:.5rem;right:.6rem}
+
+  /* Botões de ação em largura total, ação principal primeiro */
+  .save-sale-row{flex-direction:column-reverse;align-items:stretch}
+  .save-sale-row .btn,.save-sale-row .btn-outline{width:100%}
+
+  /* Modal mais compacto */
+  .modal-box{padding:1.25rem}
+
+  /* Toast ocupando a largura útil, sem cortar */
+  .toast{left:1rem;right:1rem;bottom:1rem;max-width:none;text-align:center}
+
+  /* Alvos de toque maiores nas ações de tabela e do quadro de pedidos */
+  .edit-btn,.db2{padding:.4rem .65rem;font-size:.85rem}
+  .p-action-btn{padding:.55rem 0;font-size:.7rem}
+
+  /* Card de venda: cliente não estoura a largura da tela */
+  .sale-client{max-width:150px}
+  .sale-head-right{gap:.6rem}
+
+  /* Aba Mensal mais compacta */
+  .mhead{font-size:.6rem;padding:.55rem .7rem}
+  .mrow{padding:.6rem .7rem;font-size:.78rem}
+}
+@media(max-width:400px){
+  .cg{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -413,6 +452,14 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
           <div class="fg2">
             <label>Custo real do frete (R$)</label>
             <input id="fFreteV" type="number" placeholder="0,00" step="0.01" min="0" value="0">
+          </div>
+          <div class="fg2">
+            <label>Desconto concedido (R$)</label>
+            <input id="fDesconto" type="number" placeholder="0,00" step="0.01" min="0" value="0">
+          </div>
+          <div class="fg2 s3">
+            <label>Comentários (opcional)</label>
+            <input id="fComments" type="text" placeholder="Ex: pediu para embalar separado, pagamento em 2x...">
           </div>
         </div>
 
@@ -958,6 +1005,8 @@ async function saveSale(){
   const client=document.getElementById('fClient').value.trim();
   const freteC=parseFloat(document.getElementById('fFreteC').value)||0;
   const freteV=parseFloat(document.getElementById('fFreteV').value)||0;
+  const desconto=parseFloat(document.getElementById('fDesconto').value)||0;
+  const comments=document.getElementById('fComments').value.trim();
   if(!date){toast('Informe a data',true);return}
   const btn=document.getElementById('btnSave');
   btn.disabled=true;btn.textContent='Salvando...';
@@ -967,7 +1016,7 @@ async function saveSale(){
     name:p.nome,cat:p.cat,qty:p.qty,cost:p.cost,price:p.price,
     date,client,sale_id:saleId
   }));
-  const saleRow={id:saleId,client,date,freight_charged:freteC,freight_cost:freteV};
+  const saleRow={id:saleId,client,date,freight_charged:freteC,freight_cost:freteV,discount:desconto,comments};
   try{
     const{error}=await db.from('transactions').insert(rows);
     if(error)throw error;
@@ -982,6 +1031,8 @@ async function saveSale(){
     document.getElementById('fNHint').textContent='';
     document.getElementById('fFreteC').value='0';
     document.getElementById('fFreteV').value='0';
+    document.getElementById('fDesconto').value='0';
+    document.getElementById('fComments').value='';
     initDate();rc();
     buildP();buildKpiMonths();buildAutocomplete();renderAll();
     toast(`Venda salva! ${rows.length} item${rows.length>1?'s':''} registrado${rows.length>1?'s':''} ✓`);
@@ -1431,7 +1482,7 @@ function renderKPIs(){
   const saleIds=[...new Set(d.map(t=>t.sale_id||t.id))];
   const ticket=saleIds.length>0?rec/saleIds.length:0;
 
-  // Despesas do mês e lucro real (incluindo frete)
+  // Despesas do mês e lucro real (incluindo frete e desconto)
   const expMonth=expenses.filter(e=>e.date.slice(0,7)===km).reduce((a,e)=>a+e.amount,0);
   const expPrev=expenses.filter(e=>e.date.slice(0,7)===prev).reduce((a,e)=>a+e.amount,0);
   const salesMonth=Object.values(salesMeta).filter(s=>s.date.slice(0,7)===km);
@@ -1440,8 +1491,10 @@ function renderKPIs(){
   const freteCusto=salesMonth.reduce((a,s)=>a+(s.freight_cost||0),0);
   const freteLucro=freteCobrado-freteCusto;
   const freteLucroPrev=salesPrevM.reduce((a,s)=>a+(s.freight_charged||0),0)-salesPrevM.reduce((a,s)=>a+(s.freight_cost||0),0);
-  const lucroReal=luc+freteLucro-expMonth;
-  const lucroRealPrev=pluc+freteLucroPrev-expPrev;
+  const descontoMes=salesMonth.reduce((a,s)=>a+(s.discount||0),0);
+  const descontoPrev=salesPrevM.reduce((a,s)=>a+(s.discount||0),0);
+  const lucroReal=luc+freteLucro-descontoMes-expMonth;
+  const lucroRealPrev=pluc+freteLucroPrev-descontoPrev-expPrev;
 
   function delta(cur,prv){
     if(!prv)return'<span class="cdelta nt">sem dados anteriores</span>';
@@ -1459,7 +1512,8 @@ function renderKPIs(){
     <div class="card cp"><div class="cl">Ticket médio</div><div class="cv p">${fmt(ticket)}</div><div class="csub">por venda este mês</div></div>
     <div class="card co"><div class="cl">Despesas do mês</div><div class="cv o">${fmt(expMonth)}</div>${delta(expMonth,expPrev)}<div class="csub">ads, ração, equipamento...</div></div>
     <div class="card ${freteLucro>=0?'cs':'co'}"><div class="cl">Frete (lucro/prej.)</div><div class="cv ${freteLucro>=0?'s':'r'}">${fmt(freteLucro)}</div><div class="csub">cobrado ${fmt(freteCobrado)} · custo ${fmt(freteCusto)}</div></div>
-    <div class="card cg2"><div class="cl">Lucro real</div><div class="cv ${lucroReal>=0?'g':'r'}">${fmt(lucroReal)}</div>${delta(lucroReal,lucroRealPrev)}<div class="csub">produtos + frete − despesas</div></div>
+    <div class="card co"><div class="cl">Descontos concedidos</div><div class="cv o">${fmt(descontoMes)}</div>${delta(descontoMes,descontoPrev)}<div class="csub">reduz o lucro real</div></div>
+    <div class="card cg2"><div class="cl">Lucro real</div><div class="cv ${lucroReal>=0?'g':'r'}">${fmt(lucroReal)}</div>${delta(lucroReal,lucroRealPrev)}<div class="csub">produtos + frete − desconto − despesas</div></div>
   `;
   renderMetaBar();
 }
@@ -1524,15 +1578,17 @@ function rT(){
     const freightHtml=g.isLegacy?'':`
       <div class="sale-freight">
         <span>🚚 Frete: ${meta?`cobrado ${fmt(meta.freight_charged||0)} · custo ${fmt(meta.freight_cost||0)} · ${(meta.freight_charged||0)-(meta.freight_cost||0)>=0?'lucro':'prejuízo'} ${fmt(Math.abs((meta.freight_charged||0)-(meta.freight_cost||0)))}`:'não informado'}</span>
-        <button class="sale-freight-edit" onclick="event.stopPropagation();openEditFreight('${g.saleId}')">✏️ Editar frete</button>
-      </div>`;
+        <button class="sale-freight-edit" onclick="event.stopPropagation();openEditFreight('${g.saleId}')">✏️ Editar frete/desconto</button>
+      </div>
+      ${meta&&meta.discount>0?`<div class="sale-freight"><span>💸 Desconto concedido: ${fmt(meta.discount)}</span></div>`:''}
+      ${meta&&meta.comments?`<div class="sale-freight"><span>💬 ${meta.comments}</span></div>`:''}`;
 
     return`<div class="sale-group ${isOpen?'open':''}" id="sg_${g.saleId}">
       <div class="sale-header" onclick="toggleSaleGroup('${g.saleId}')">
         <div class="sale-head-left">
           <span class="sale-client ${g.client?'':'anon'}">${g.client||'Venda avulsa'}</span>
           <span class="sale-date">${d}/${mo}/${y}</span>
-          <span class="sale-count">${g.items.length} ${g.items.length>1?'itens':'item'} · ${qtyTotal}un${hasFreight?' · 🚚':''}</span>
+          <span class="sale-count">${g.items.length} ${g.items.length>1?'itens':'item'} · ${qtyTotal}un${hasFreight?' · 🚚':''}${meta&&meta.discount>0?' · 💸':''}${meta&&meta.comments?' · 💬':''}</span>
         </div>
         <div class="sale-head-right">
           <span class="sale-total">${fmt(totalRec)}</span>
@@ -1561,26 +1617,32 @@ function toggleSaleGroup(saleId){
 }
 
 async function openEditFreight(saleId){
-  const meta=salesMeta[saleId]||{freight_charged:0,freight_cost:0};
+  const meta=salesMeta[saleId]||{freight_charged:0,freight_cost:0,discount:0,comments:''};
   const cobrado=prompt('Valor cobrado do cliente pelo frete (R$):',meta.freight_charged||0);
   if(cobrado===null)return;
   const custo=prompt('Custo real do frete (R$):',meta.freight_cost||0);
   if(custo===null)return;
+  const descontoStr=prompt('Desconto concedido nesta venda (R$):',meta.discount||0);
+  if(descontoStr===null)return;
+  const comentario=prompt('Comentários sobre a venda (opcional):',meta.comments||'');
+  if(comentario===null)return;
   const freight_charged=parseFloat(cobrado)||0;
   const freight_cost=parseFloat(custo)||0;
+  const discount=parseFloat(descontoStr)||0;
+  const comments=comentario.trim();
   try{
     if(salesMeta[saleId]){
-      const{error}=await db.from('sales').update({freight_charged,freight_cost}).eq('id',saleId);
+      const{error}=await db.from('sales').update({freight_charged,freight_cost,discount,comments}).eq('id',saleId);
       if(error)throw error;
     }else{
       // grupo antigo sem registro em sales — cria um novo vinculado ao sale_id existente
       const g=filtered().find(t=>t.sale_id===saleId);
-      const row={id:saleId,client:g?.client||'',date:g?.date||new Date().toISOString().split('T')[0],freight_charged,freight_cost};
+      const row={id:saleId,client:g?.client||'',date:g?.date||new Date().toISOString().split('T')[0],freight_charged,freight_cost,discount,comments};
       const{error}=await db.from('sales').insert([row]);
       if(error)throw error;
     }
-    salesMeta[saleId]={...(salesMeta[saleId]||{id:saleId}),freight_charged,freight_cost};
-    renderAll();toast('Frete atualizado!');
+    salesMeta[saleId]={...(salesMeta[saleId]||{id:saleId}),freight_charged,freight_cost,discount,comments};
+    renderAll();toast('Venda atualizada!');
   }catch(e){toast('Erro: '+e.message,true)}
 }
 
