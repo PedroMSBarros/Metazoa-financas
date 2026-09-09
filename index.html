@@ -373,6 +373,7 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <button class="tb" onclick="showTab('clientes',this)">Clientes</button>
         <button class="tb" onclick="showTab('despesas',this)">Despesas</button>
         <button class="tb" onclick="showTab('pedidos',this)">Pedidos</button>
+        <button class="tb" onclick="showTab('envios',this)">Envios</button>
         <button class="tb" onclick="showTab('mensal',this)">Mensal</button>
       </div>
     </div>
@@ -680,6 +681,60 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       </div>
     </div>
 
+    <!-- ENVIOS -->
+    <div id="tab-envios" class="tc">
+      <div class="fs">
+        <div class="stitle">Novo pedido aguardando envio</div>
+        <div class="fg">
+          <div class="fg2 s2">
+            <label>Cliente</label>
+            <input id="evClient" type="text" placeholder="Nome do cliente" list="fClientList">
+          </div>
+          <div class="fg2">
+            <label>Transportadora</label>
+            <input id="evTransp" type="text" placeholder="Ex: Jadlog, Correios..." list="transpList">
+            <datalist id="transpList">
+              <option value="Jadlog"><option value="Correios"><option value="Buslog">
+              <option value="Azul Cargo Express"><option value="Total Express">
+              <option value="Loggi"><option value="Motoboy"><option value="Retirada no local">
+            </datalist>
+          </div>
+          <div class="fg2"><label>Data do pedido</label><input id="evData" type="date"></div>
+        </div>
+
+        <div style="border-top:1px solid var(--bor);margin:1.25rem 0;padding-top:1.25rem">
+          <div class="stitle" style="margin-bottom:1rem">Adicionar itens do pedido</div>
+          <div class="fg">
+            <div class="fg2 s2"><label>Produto / Animal</label><input id="evN" type="text" placeholder="Ex: Betta Splendens..." list="fNList"></div>
+            <div class="fg2"><label>Categoria</label><select id="evC"><option value="fish">🐟 Peixe/Animal</option><option value="plant">🌿 Planta</option><option value="equip">⚙️ Equipamento</option><option value="other">📦 Outro</option></select></div>
+            <div class="fg2"><label>Quantidade</label><input id="evQ" type="number" value="1" min="1"></div>
+            <div class="fg2"><label>Custo unit. (R$, opcional)</label><input id="evCo" type="number" placeholder="0,00" step="0.01" min="0"></div>
+            <div class="fg2"><label>Venda unit. (R$, opcional)</label><input id="evV" type="number" placeholder="0,00" step="0.01" min="0"></div>
+            <div class="fg2" style="justify-content:flex-end"><button class="btn-outline" onclick="addEnvioItem()">+ Adicionar item</button></div>
+          </div>
+        </div>
+
+        <div class="pending-section">
+          <div class="pending-header">
+            <div class="pending-title">Itens do pedido (<span id="envioPendingCount">0</span>)</div>
+          </div>
+          <div class="pending-list" id="envioPendingList">
+            <div class="pending-empty">Nenhum item adicionado ainda</div>
+          </div>
+          <div class="save-sale-row">
+            <button class="btn-outline" onclick="clearEnvioItems()">Limpar</button>
+            <button class="btn" id="btnEnvioSave" onclick="saveEnvio()">Salvar pedido</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="th2">
+        <div class="stitle" style="margin:0">Aguardando envio</div>
+      </div>
+      <div id="enviosBoard"></div>
+      <div id="enviosEmpty" class="empty" style="display:none"><div class="ei">📮</div><div>Nenhum pedido aguardando envio</div></div>
+    </div>
+
     <!-- MENSAL -->
     <div id="tab-mensal" class="tc">
       <div class="mwrap">
@@ -765,6 +820,10 @@ let expenses=[];
 let salesMeta={};
 let pedidos=[];
 let pedidoCatFilter='all';
+let envios=[];
+let envioItensMap={};
+let pendingEnvioItems=[];
+let openEnvioGroups=new Set();
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -806,6 +865,16 @@ async function loadApp(user){
     const{data:pedData,error:pedError}=await db.from('pedidos_espera').select('*').order('created_at',{ascending:false});
     if(pedError)throw pedError;
     pedidos=pedData||[];
+    const{data:enviosData,error:evError}=await db.from('envios').select('*').order('created_at',{ascending:false});
+    if(evError)throw evError;
+    envios=enviosData||[];
+    const{data:evItData,error:evItError}=await db.from('envio_itens').select('*');
+    if(evItError)throw evItError;
+    envioItensMap={};
+    (evItData||[]).forEach(it=>{
+      if(!envioItensMap[it.envio_id])envioItensMap[it.envio_id]=[];
+      envioItensMap[it.envio_id].push(it);
+    });
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -813,6 +882,7 @@ async function loadApp(user){
     initDate();
     document.getElementById('exD_date').value=new Date().toISOString().split('T')[0];
     document.getElementById('pData').value=new Date().toISOString().split('T')[0];
+    document.getElementById('evData').value=new Date().toISOString().split('T')[0];
     buildP();buildKpiMonths();buildAutocomplete();renderAll();
     if(metaMensal>0) document.getElementById('metaInput').value=metaMensal;
     if(recontatoDias>0) document.getElementById('recontatoInput').value=recontatoDias;
@@ -990,13 +1060,28 @@ function renderPending(){
   document.getElementById('pendingTotal').textContent=`Total: ${fmt(totalLuc)} lucro | ${fmt(totalRec)} receita`;
   list.innerHTML=pendingItems.map((p,i)=>{
     const l=(p.price-p.cost)*p.qty;
-    return`<div class="pending-item">
-      <span class="pi-name">${p.nome}</span>
+    const needsPrice=p.cost===0&&p.price===0;
+    return`<div class="pending-item" onclick="editPendingItem(${i})" style="cursor:pointer" title="Clique para editar">
+      <span class="pi-name">${p.nome}${needsPrice?' <span style="color:var(--orange);font-weight:400">· definir preço</span>':''}</span>
       <span class="pi-detail">${CL2[p.cat]} · ${p.qty}x · ${fmt(p.cost)} → ${fmt(p.price)}</span>
       <span class="pi-lucro">${fmt(l)}</span>
-      <button class="pi-remove" onclick="removePendingItem(${i})">✕</button>
+      <button class="pi-remove" onclick="event.stopPropagation();removePendingItem(${i})">✕</button>
     </div>`;
   }).join('');
+}
+
+function editPendingItem(idx){
+  const p=pendingItems[idx];
+  if(!p)return;
+  document.getElementById('fN').value=p.nome;
+  document.getElementById('fC').value=p.cat;
+  document.getElementById('fQ').value=p.qty;
+  document.getElementById('fCo').value=p.cost||'';
+  document.getElementById('fV').value=p.price||'';
+  pendingItems.splice(idx,1);
+  renderPending();
+  rc();
+  document.getElementById('fCo').focus();
 }
 
 async function saveSale(){
@@ -1211,7 +1296,7 @@ function rExpenses(){
 }
 
 /* ── RENDER ── */
-function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();}
+function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();rEnvios();}
 
 /* ── PEDIDOS / LISTA DE ESPERA ── */
 const PCL={fish:'🐟 Peixe/Animal',plant:'🌿 Planta',equip:'⚙️ Equipamento',other:'📦 Outro'};
@@ -1388,6 +1473,171 @@ function rPedidos(){
       dashAlert.innerHTML=`<div class="pedido-alert" style="cursor:pointer" onclick="showTab('pedidos',document.querySelector('.tb[onclick*=pedidos]'))">📦 <strong>${disponiveis.length} pedido${disponiveis.length>1?'s':''} disponível${disponiveis.length>1?'is':''}</strong> — cliente${disponiveis.length>1?'s':''} aguardando aviso. Ver aba Pedidos →</div>`;
     }else dashAlert.innerHTML='';
   }
+}
+
+/* ── ENVIOS (pedidos aguardando envio) ── */
+function addEnvioItem(){
+  const nome=document.getElementById('evN').value.trim();
+  const cat=document.getElementById('evC').value;
+  const qty=parseInt(document.getElementById('evQ').value)||1;
+  const cost=parseFloat(document.getElementById('evCo').value)||0;
+  const price=parseFloat(document.getElementById('evV').value)||0;
+  if(!nome){toast('Digite o nome do produto',true);return}
+  pendingEnvioItems.push({nome,cat,qty,cost,price});
+  renderEnvioItems();
+  document.getElementById('evN').value='';
+  document.getElementById('evCo').value='';
+  document.getElementById('evV').value='';
+  document.getElementById('evQ').value='1';
+  document.getElementById('evN').focus();
+}
+
+function removeEnvioItemIdx(idx){
+  pendingEnvioItems.splice(idx,1);
+  renderEnvioItems();
+}
+
+function clearEnvioItems(){
+  pendingEnvioItems=[];
+  renderEnvioItems();
+}
+
+function renderEnvioItems(){
+  const list=document.getElementById('envioPendingList');
+  document.getElementById('envioPendingCount').textContent=pendingEnvioItems.length;
+  if(!pendingEnvioItems.length){
+    list.innerHTML='<div class="pending-empty">Nenhum item adicionado ainda</div>';
+    return;
+  }
+  list.innerHTML=pendingEnvioItems.map((p,i)=>{
+    const precoInfo=(p.cost>0||p.price>0)?` · ${fmt(p.cost)} → ${fmt(p.price)}`:' · preço a definir';
+    return`<div class="pending-item">
+      <span class="pi-name">${p.nome}</span>
+      <span class="pi-detail">${CL2[p.cat]||p.cat} · ${p.qty}x${precoInfo}</span>
+      <button class="pi-remove" onclick="removeEnvioItemIdx(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveEnvio(){
+  const cliente_nome=document.getElementById('evClient').value.trim();
+  const transportadora=document.getElementById('evTransp').value.trim();
+  const data_pedido=document.getElementById('evData').value;
+  if(!cliente_nome){toast('Informe o nome do cliente',true);return}
+  if(!pendingEnvioItems.length){toast('Adicione pelo menos um item',true);return}
+  if(!data_pedido){toast('Informe a data do pedido',true);return}
+  const btn=document.getElementById('btnEnvioSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  const envioId=Date.now()+'';
+  const envioRow={id:envioId,cliente_nome,transportadora,data_pedido,status:'aguardando',notas:''};
+  const itemRows=pendingEnvioItems.map(p=>({
+    id:envioId+'_'+Math.random().toString(36).slice(2,7),
+    envio_id:envioId,nome:p.nome,categoria:p.cat,qty:p.qty,cost:p.cost,price:p.price
+  }));
+  try{
+    const{error}=await db.from('envios').insert([envioRow]);
+    if(error)throw error;
+    const{error:itError}=await db.from('envio_itens').insert(itemRows);
+    if(itError)throw itError;
+    envios.unshift(envioRow);
+    envioItensMap[envioId]=itemRows;
+    pendingEnvioItems=[];
+    renderEnvioItems();
+    document.getElementById('evClient').value='';
+    document.getElementById('evTransp').value='';
+    document.getElementById('evData').value=new Date().toISOString().split('T')[0];
+    rEnvios();
+    toast('Pedido salvo na fila de envio! ✓');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar pedido'}
+}
+
+function toggleEnvioGroup(id){
+  if(openEnvioGroups.has(id))openEnvioGroups.delete(id);
+  else openEnvioGroups.add(id);
+  const el=document.getElementById('evg_'+id);
+  if(el)el.classList.toggle('open');
+}
+
+async function delEnvio(id){
+  if(!confirm('Excluir este pedido da fila de envio?'))return;
+  try{
+    const{error}=await db.from('envios').delete().eq('id',id);
+    if(error)throw error;
+    envios=envios.filter(e=>e.id!==id);
+    delete envioItensMap[id];
+    rEnvios();toast('Pedido removido');
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+async function transferToLancamentos(id){
+  const ev=envios.find(e=>e.id===id);
+  const items=envioItensMap[id]||[];
+  if(!ev||!items.length)return;
+
+  // Carrega cliente, itens e transportadora direto no carrinho de Lançamentos
+  document.getElementById('fClient').value=ev.cliente_nome;
+  document.getElementById('fD').value=ev.data_pedido;
+  if(ev.transportadora)document.getElementById('fComments').value=`Transportadora: ${ev.transportadora}`;
+  items.forEach(it=>{
+    pendingItems.push({nome:it.name||it.nome,cat:it.categoria,qty:it.qty,cost:it.cost||0,price:it.price||0});
+  });
+  renderPending();
+
+  // Marca como enviado e tira da fila ativa
+  try{
+    const{error}=await db.from('envios').update({status:'enviado'}).eq('id',id);
+    if(error)throw error;
+    envios=envios.filter(e=>e.id!==id);
+    rEnvios();
+  }catch(e){toast('Erro ao atualizar status: '+e.message,true)}
+
+  showTab('lancamentos',document.querySelector('.tb[onclick*="lancamentos"]'));
+  toast('Itens carregados em Lançamentos — confira os preços e finalize a venda!');
+  document.getElementById('fCo').focus();
+}
+
+function rEnvios(){
+  const board=document.getElementById('enviosBoard'),empty=document.getElementById('enviosEmpty');
+  const ativos=envios.filter(e=>e.status==='aguardando').sort((a,b)=>a.data_pedido.localeCompare(b.data_pedido));
+  if(!ativos.length){board.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  board.innerHTML=ativos.map(ev=>{
+    const items=envioItensMap[ev.id]||[];
+    const isOpen=openEnvioGroups.has(ev.id);
+    const[y,mo,d]=ev.data_pedido.split('-');
+    const itemsHtml=items.map(it=>`<tr>
+      <td style="font-weight:600">${it.name||it.nome}</td>
+      <td><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
+      <td class="mn" style="text-align:center">${it.qty}</td>
+      <td class="mn" style="color:var(--orange)">${it.cost>0?fmt(it.cost):'—'}</td>
+      <td class="mn" style="color:var(--sage)">${it.price>0?fmt(it.price):'—'}</td>
+    </tr>`).join('');
+    return`<div class="sale-group ${isOpen?'open':''}" id="evg_${ev.id}">
+      <div class="sale-header" onclick="toggleEnvioGroup('${ev.id}')">
+        <div class="sale-head-left">
+          <span class="sale-client">${ev.cliente_nome}</span>
+          <span class="sale-date">${d}/${mo}/${y}${ev.transportadora?` · 🚚 ${ev.transportadora}`:''}</span>
+          <span class="sale-count">${items.length} ${items.length>1?'itens':'item'}</span>
+        </div>
+        <div class="sale-head-right">
+          <span class="sale-chevron">▼</span>
+        </div>
+      </div>
+      <div class="sale-body">
+        <div class="sale-items tw" style="border:none;border-radius:0">
+          <table>
+            <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th></tr></thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+        </div>
+        <div class="sale-freight" style="justify-content:flex-end;gap:.6rem">
+          <button class="p-action-btn" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();transferToLancamentos('${ev.id}')">Transferir p/ Lançamentos</button>
+          <button class="p-action-btn secondary" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();delEnvio('${ev.id}')">Excluir</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ── CLIENTES ── */
