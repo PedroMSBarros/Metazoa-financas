@@ -73,6 +73,7 @@ header{border-bottom:1px solid var(--bor);background:rgba(14,7,2,.92);position:s
 .tabs::-webkit-scrollbar{display:none}
 .tb{background:none;border:none;color:var(--tmu);font-family:var(--font);font-size:.82rem;font-weight:600;padding:.8rem 1.1rem;cursor:pointer;letter-spacing:.05em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;text-transform:uppercase;flex-shrink:0}
 .tb.active{color:var(--sage);border-color:var(--sage)}
+.tb-badge{display:inline-block;margin-left:.4rem;background:var(--orange);color:#fff;font-size:.62rem;font-weight:800;padding:.1rem .4rem;border-radius:999px;vertical-align:middle;letter-spacing:0}
 .tb:hover:not(.active){color:var(--text)}
 
 /* KPI CARDS */
@@ -292,7 +293,8 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
   /* Colunas específicas escondidas por tabela (não genérico!) */
   #tab-despesas table th:nth-child(5),#tab-despesas table td:nth-child(5){display:none}
   .sale-items table th:nth-child(7),.sale-items table td:nth-child(7){display:none}
-  #tab-clientes table th:nth-child(4),#tab-clientes table td:nth-child(4){display:none}
+  #tab-clientes table th:nth-child(5),#tab-clientes table td:nth-child(5){display:none}
+  #tab-clientes table th:nth-child(8),#tab-clientes table td:nth-child(8){display:none}
 
   /* Cartão de item pendente empilhado, com botão remover fixo */
   .pending-item{display:flex;flex-direction:column;align-items:stretch;gap:.25rem;position:relative;padding-right:2.3rem}
@@ -372,8 +374,8 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
         <button class="tb" onclick="showTab('historico',this)">Histórico</button>
         <button class="tb" onclick="showTab('clientes',this)">Clientes</button>
         <button class="tb" onclick="showTab('despesas',this)">Despesas</button>
-        <button class="tb" onclick="showTab('pedidos',this)">Pedidos</button>
-        <button class="tb" onclick="showTab('envios',this)">Envios</button>
+        <button class="tb" onclick="showTab('pedidos',this)">Pedidos<span class="tb-badge" id="tbBadgePedidos" style="display:none">0</span></button>
+        <button class="tb" onclick="showTab('envios',this)">Envios<span class="tb-badge" id="tbBadgeEnvios" style="display:none">0</span></button>
         <button class="tb" onclick="showTab('mensal',this)">Mensal</button>
       </div>
     </div>
@@ -543,8 +545,8 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       <div class="tw">
         <table>
           <thead><tr>
-            <th>Cliente</th><th>Total gasto</th><th style="text-align:center">Compras</th>
-            <th>Categoria favorita</th><th>Última compra</th><th>Status</th><th>Pedidos</th>
+            <th>Cliente</th><th>Telefone</th><th>Total gasto</th><th style="text-align:center">Compras</th>
+            <th>Categoria favorita</th><th>Última compra</th><th>Status</th><th>Pedidos</th><th></th>
           </tr></thead>
           <tbody id="cliB"></tbody>
         </table>
@@ -729,7 +731,7 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       </div>
 
       <div class="th2">
-        <div class="stitle" style="margin:0">Aguardando envio</div>
+        <div class="stitle" style="margin:0" id="enviosTitle">Aguardando envio</div>
       </div>
       <div id="enviosBoard"></div>
       <div id="enviosEmpty" class="empty" style="display:none"><div class="ei">📮</div><div>Nenhum pedido aguardando envio</div></div>
@@ -802,6 +804,101 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
   </div>
 </div>
 
+<!-- PEDIDO EDIT MODAL -->
+<div class="modal-overlay" id="editPedidoModal">
+  <div class="modal-box">
+    <div class="modal-title">Editar pedido</div>
+    <div class="fg">
+      <div class="fg2 s2"><label>Item procurado</label><input id="epItem" type="text"></div>
+      <div class="fg2"><label>Cliente</label><input id="epClient" type="text"></div>
+      <div class="fg2"><label>Contato</label><input id="epContato" type="text" placeholder="Opcional"></div>
+      <div class="fg2">
+        <label>Categoria</label>
+        <select id="epCat">
+          <option value="fish">🐟 Peixe/Animal</option>
+          <option value="plant">🌿 Planta</option>
+          <option value="equip">⚙️ Equipamento</option>
+          <option value="other">📦 Outro</option>
+        </select>
+      </div>
+      <div class="fg2">
+        <label>Prioridade</label>
+        <select id="epPrio"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select>
+      </div>
+      <div class="fg2">
+        <label>Status</label>
+        <select id="epStatus">
+          <option value="aguardando">Aguardando</option>
+          <option value="disponivel">Disponível</option>
+          <option value="notificado">Notificado</option>
+          <option value="concluido">Concluído</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </div>
+      <div class="fg2"><label>Data do pedido</label><input id="epData" type="date"></div>
+      <div class="fg2"><label>Previsão de chegada</label><input id="epPrevisao" type="date"></div>
+      <div class="fg2 s2"><label>Notas</label><input id="epNotas" type="text" placeholder="Opcional"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeEditPedido()">Cancelar</button>
+      <button class="btn" id="btnEditPedidoSave" onclick="saveEditPedido()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENVIO EDIT MODAL -->
+<div class="modal-overlay" id="editEnvioModal">
+  <div class="modal-box">
+    <div class="modal-title">Editar pedido de envio</div>
+    <div class="fg">
+      <div class="fg2 s2"><label>Cliente</label><input id="eevClient" type="text"></div>
+      <div class="fg2"><label>Transportadora</label><input id="eevTransp" type="text" list="transpList"></div>
+      <div class="fg2"><label>Data do pedido</label><input id="eevData" type="date"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeEditEnvio()">Cancelar</button>
+      <button class="btn" id="btnEditEnvioSave" onclick="saveEditEnvio()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENVIO ITEM EDIT MODAL -->
+<div class="modal-overlay" id="editEnvioItemModal">
+  <div class="modal-box">
+    <div class="modal-title">Editar item do envio</div>
+    <div class="fg">
+      <div class="fg2 s2"><label>Produto / Animal</label><input id="eeiNome" type="text"></div>
+      <div class="fg2">
+        <label>Categoria</label>
+        <select id="eeiCat"><option value="fish">🐟 Peixe/Animal</option><option value="plant">🌿 Planta</option><option value="equip">⚙️ Equipamento</option><option value="other">📦 Outro</option></select>
+      </div>
+      <div class="fg2"><label>Quantidade</label><input id="eeiQty" type="number" min="1"></div>
+      <div class="fg2"><label>Custo unit. (R$)</label><input id="eeiCost" type="number" step="0.01" min="0"></div>
+      <div class="fg2"><label>Venda unit. (R$)</label><input id="eeiPrice" type="number" step="0.01" min="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeEditEnvioItem()">Cancelar</button>
+      <button class="btn" id="btnEditEnvioItemSave" onclick="saveEditEnvioItem()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENTE EDIT MODAL -->
+<div class="modal-overlay" id="editClienteModal">
+  <div class="modal-box">
+    <div class="modal-title">Editar cliente</div>
+    <div class="fg">
+      <div class="fg2 s2"><label>Cliente</label><input id="ecNome" type="text" disabled style="opacity:.6"></div>
+      <div class="fg2 s2"><label>Telefone / WhatsApp</label><input id="ecTelefone" type="text" placeholder="Ex: (11) 91234-5678"></div>
+      <div class="fg2 s2"><label>Notas</label><input id="ecNotas" type="text" placeholder="Opcional"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeEditCliente()">Cancelar</button>
+      <button class="btn" id="btnEditClienteSave" onclick="saveEditCliente()">Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -824,6 +921,11 @@ let envios=[];
 let envioItensMap={};
 let pendingEnvioItems=[];
 let openEnvioGroups=new Set();
+let editingPedidoId=null;
+let editingEnvioId=null;
+let editingEnvioItemId=null,editingEnvioItemEnvioId=null;
+let clientesMeta={};
+let editingClienteName=null;
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -875,6 +977,10 @@ async function loadApp(user){
       if(!envioItensMap[it.envio_id])envioItensMap[it.envio_id]=[];
       envioItensMap[it.envio_id].push(it);
     });
+    const{data:clData,error:clError}=await db.from('clientes').select('*');
+    if(clError)throw clError;
+    clientesMeta={};
+    (clData||[]).forEach(c=>{clientesMeta[c.nome.toLowerCase()]=c});
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -982,7 +1088,8 @@ function onClientInput(){
   if(!stats){hint.textContent='';return}
   const isOverdue=stats.daysSince>=recontatoDias;
   hint.className='autofill-hint'+(isOverdue?' warn':'');
-  hint.textContent=`👤 Cliente conhecido: ${stats.compras} compra${stats.compras>1?'s':''} · última há ${stats.daysSince} dia${stats.daysSince!==1?'s':''}${isOverdue?' — bom momento pra reconectar!':''}`;
+  const tel=clientesMeta[match.toLowerCase()]?.telefone;
+  hint.textContent=`👤 Cliente conhecido: ${stats.compras} compra${stats.compras>1?'s':''} · última há ${stats.daysSince} dia${stats.daysSince!==1?'s':''}${tel?` · 📱 ${tel}`:''}${isOverdue?' — bom momento pra reconectar!':''}`;
 }
 
 /* ── META MENSAL ── */
@@ -1315,7 +1422,9 @@ function onPedidoClientInput(){
   const stats=getClientStats().find(c=>c.name.toLowerCase()===match.toLowerCase());
   if(!stats){hint.textContent='';return}
   hint.className='autofill-hint';
-  hint.textContent=`👤 Cliente conhecido: ${stats.compras} compra${stats.compras>1?'s':''} · última há ${stats.daysSince} dia${stats.daysSince!==1?'s':''}`;
+  const tel=clientesMeta[match.toLowerCase()]?.telefone;
+  if(tel&&!document.getElementById('pContato').value.trim())document.getElementById('pContato').value=tel;
+  hint.textContent=`👤 Cliente conhecido: ${stats.compras} compra${stats.compras>1?'s':''} · última há ${stats.daysSince} dia${stats.daysSince!==1?'s':''}${tel?` · 📱 ${tel}`:''}`;
 }
 
 async function addPedido(){
@@ -1370,6 +1479,49 @@ async function delPedido(id){
   }catch(e){toast('Erro: '+e.message,true)}
 }
 
+function openEditPedido(id){
+  const p=pedidos.find(x=>x.id===id);
+  if(!p)return;
+  editingPedidoId=id;
+  document.getElementById('epItem').value=p.item_procurado;
+  document.getElementById('epClient').value=p.cliente_nome;
+  document.getElementById('epContato').value=p.cliente_contato||'';
+  document.getElementById('epCat').value=p.categoria;
+  document.getElementById('epPrio').value=p.prioridade;
+  document.getElementById('epStatus').value=p.status;
+  document.getElementById('epData').value=p.data_solicitacao;
+  document.getElementById('epPrevisao').value=p.previsao_chegada||'';
+  document.getElementById('epNotas').value=p.notas||'';
+  document.getElementById('editPedidoModal').classList.add('open');
+}
+function closeEditPedido(){
+  editingPedidoId=null;
+  document.getElementById('editPedidoModal').classList.remove('open');
+}
+async function saveEditPedido(){
+  if(!editingPedidoId)return;
+  const item_procurado=document.getElementById('epItem').value.trim();
+  const cliente_nome=document.getElementById('epClient').value.trim();
+  const cliente_contato=document.getElementById('epContato').value.trim();
+  const categoria=document.getElementById('epCat').value;
+  const prioridade=document.getElementById('epPrio').value;
+  const status=document.getElementById('epStatus').value;
+  const data_solicitacao=document.getElementById('epData').value;
+  const previsao_chegada=document.getElementById('epPrevisao').value||'';
+  const notas=document.getElementById('epNotas').value.trim();
+  if(!item_procurado||!cliente_nome||!data_solicitacao){toast('Preencha item, cliente e data',true);return}
+  const btn=document.getElementById('btnEditPedidoSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const{error}=await db.from('pedidos_espera').update({item_procurado,cliente_nome,cliente_contato,categoria,prioridade,status,data_solicitacao,previsao_chegada,notas}).eq('id',editingPedidoId);
+    if(error)throw error;
+    const idx=pedidos.findIndex(x=>x.id===editingPedidoId);
+    if(idx>=0)pedidos[idx]={...pedidos[idx],item_procurado,cliente_nome,cliente_contato,categoria,prioridade,status,data_solicitacao,previsao_chegada,notas};
+    closeEditPedido();renderAll();toast('Pedido atualizado!');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar alterações'}
+}
+
 function convertToSale(id){
   const p=pedidos.find(x=>x.id===id);
   if(!p)return;
@@ -1399,18 +1551,18 @@ function pedidoCard(p){
   let actionsHtml='';
   if(p.status==='notificado'){
     actionsHtml=`<div class="p-actions">
-      <button class="p-action-btn" onclick="convertToSale('${p.id}')">Concluir → Venda</button>
-      <button class="p-action-btn secondary" onclick="delPedido('${p.id}')">✕</button>
+      <button class="p-action-btn" onclick="event.stopPropagation();convertToSale('${p.id}')">Concluir → Venda</button>
+      <button class="p-action-btn secondary" onclick="event.stopPropagation();delPedido('${p.id}')">✕</button>
     </div>`;
   }else if(st.next){
     actionsHtml=`<div class="p-actions">
-      <button class="p-action-btn" onclick="moveStatus('${p.id}','${st.next}')">${st.nextLabel}</button>
-      <button class="p-action-btn secondary" onclick="delPedido('${p.id}')">✕</button>
+      <button class="p-action-btn" onclick="event.stopPropagation();moveStatus('${p.id}','${st.next}')">${st.nextLabel}</button>
+      <button class="p-action-btn secondary" onclick="event.stopPropagation();delPedido('${p.id}')">✕</button>
     </div>`;
   }else{
-    actionsHtml=`<div class="p-actions"><button class="p-action-btn secondary" onclick="delPedido('${p.id}')" style="flex:1">Remover da lista</button></div>`;
+    actionsHtml=`<div class="p-actions"><button class="p-action-btn secondary" onclick="event.stopPropagation();delPedido('${p.id}')" style="flex:1">Remover da lista</button></div>`;
   }
-  return`<div class="p-card ${isFlag?'flag':''}">
+  return`<div class="p-card ${isFlag?'flag':''}" onclick="openEditPedido('${p.id}')" style="cursor:pointer" title="Clique para editar">
     <div class="p-card-top">
       <div class="p-item">${p.item_procurado}</div>
       <span class="badge ${CB[p.categoria]||'bo'}" style="font-size:.62rem">${PCL[p.categoria]||p.categoria}</span>
@@ -1443,6 +1595,12 @@ function rPedidos(){
     if(cnt)cnt.textContent=list.length;
     if(el)el.innerHTML=list.length?list.map(pedidoCard).join(''):`<div class="p-empty-col">Nenhum pedido aqui</div>`;
   });
+
+  const tbBadge=document.getElementById('tbBadgePedidos');
+  if(tbBadge){
+    if(byStatus.aguardando.length){tbBadge.style.display='inline-block';tbBadge.textContent=byStatus.aguardando.length;}
+    else tbBadge.style.display='none';
+  }
 
   // Alerta no topo da aba Pedidos
   const disponiveis=pedidos.filter(p=>p.status==='disponivel');
@@ -1570,6 +1728,73 @@ async function delEnvio(id){
   }catch(e){toast('Erro: '+e.message,true)}
 }
 
+function openEditEnvio(id){
+  const ev=envios.find(x=>x.id===id);
+  if(!ev)return;
+  editingEnvioId=id;
+  document.getElementById('eevClient').value=ev.cliente_nome;
+  document.getElementById('eevTransp').value=ev.transportadora||'';
+  document.getElementById('eevData').value=ev.data_pedido;
+  document.getElementById('editEnvioModal').classList.add('open');
+}
+function closeEditEnvio(){
+  editingEnvioId=null;
+  document.getElementById('editEnvioModal').classList.remove('open');
+}
+async function saveEditEnvio(){
+  if(!editingEnvioId)return;
+  const cliente_nome=document.getElementById('eevClient').value.trim();
+  const transportadora=document.getElementById('eevTransp').value.trim();
+  const data_pedido=document.getElementById('eevData').value;
+  if(!cliente_nome||!data_pedido){toast('Preencha cliente e data',true);return}
+  const btn=document.getElementById('btnEditEnvioSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const{error}=await db.from('envios').update({cliente_nome,transportadora,data_pedido}).eq('id',editingEnvioId);
+    if(error)throw error;
+    const idx=envios.findIndex(x=>x.id===editingEnvioId);
+    if(idx>=0)envios[idx]={...envios[idx],cliente_nome,transportadora,data_pedido};
+    closeEditEnvio();rEnvios();toast('Pedido de envio atualizado!');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar alterações'}
+}
+
+function openEditEnvioItem(itemId,envioId){
+  const it=(envioItensMap[envioId]||[]).find(x=>x.id===itemId);
+  if(!it)return;
+  editingEnvioItemId=itemId;editingEnvioItemEnvioId=envioId;
+  document.getElementById('eeiNome').value=it.nome;
+  document.getElementById('eeiCat').value=it.categoria;
+  document.getElementById('eeiQty').value=it.qty;
+  document.getElementById('eeiCost').value=it.cost||0;
+  document.getElementById('eeiPrice').value=it.price||0;
+  document.getElementById('editEnvioItemModal').classList.add('open');
+}
+function closeEditEnvioItem(){
+  editingEnvioItemId=null;editingEnvioItemEnvioId=null;
+  document.getElementById('editEnvioItemModal').classList.remove('open');
+}
+async function saveEditEnvioItem(){
+  if(!editingEnvioItemId||!editingEnvioItemEnvioId)return;
+  const nome=document.getElementById('eeiNome').value.trim();
+  const categoria=document.getElementById('eeiCat').value;
+  const qty=parseInt(document.getElementById('eeiQty').value)||1;
+  const cost=parseFloat(document.getElementById('eeiCost').value)||0;
+  const price=parseFloat(document.getElementById('eeiPrice').value)||0;
+  if(!nome){toast('Digite o nome do produto',true);return}
+  const btn=document.getElementById('btnEditEnvioItemSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  try{
+    const{error}=await db.from('envio_itens').update({nome,categoria,qty,cost,price}).eq('id',editingEnvioItemId);
+    if(error)throw error;
+    const arr=envioItensMap[editingEnvioItemEnvioId]||[];
+    const idx=arr.findIndex(x=>x.id===editingEnvioItemId);
+    if(idx>=0)arr[idx]={...arr[idx],nome,categoria,qty,cost,price};
+    closeEditEnvioItem();rEnvios();toast('Item atualizado!');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar alterações'}
+}
+
 async function transferToLancamentos(id){
   const ev=envios.find(e=>e.id===id);
   const items=envioItensMap[id]||[];
@@ -1600,13 +1825,22 @@ async function transferToLancamentos(id){
 function rEnvios(){
   const board=document.getElementById('enviosBoard'),empty=document.getElementById('enviosEmpty');
   const ativos=envios.filter(e=>e.status==='aguardando').sort((a,b)=>a.data_pedido.localeCompare(b.data_pedido));
+
+  const badge=document.getElementById('tbBadgeEnvios');
+  if(badge){
+    if(ativos.length){badge.style.display='inline-block';badge.textContent=ativos.length;}
+    else badge.style.display='none';
+  }
+  const title=document.getElementById('enviosTitle');
+  if(title)title.textContent=ativos.length?`Aguardando envio (${ativos.length})`:'Aguardando envio';
+
   if(!ativos.length){board.innerHTML='';empty.style.display='block';return}
   empty.style.display='none';
   board.innerHTML=ativos.map(ev=>{
     const items=envioItensMap[ev.id]||[];
     const isOpen=openEnvioGroups.has(ev.id);
     const[y,mo,d]=ev.data_pedido.split('-');
-    const itemsHtml=items.map(it=>`<tr>
+    const itemsHtml=items.map(it=>`<tr style="cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')" title="Clique para editar">
       <td style="font-weight:600">${it.name||it.nome}</td>
       <td><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
       <td class="mn" style="text-align:center">${it.qty}</td>
@@ -1621,6 +1855,7 @@ function rEnvios(){
           <span class="sale-count">${items.length} ${items.length>1?'itens':'item'}</span>
         </div>
         <div class="sale-head-right">
+          <button class="sale-freight-edit" onclick="event.stopPropagation();openEditEnvio('${ev.id}')">✏️ Editar</button>
           <span class="sale-chevron">▼</span>
         </div>
       </div>
@@ -1699,16 +1934,49 @@ function rClientes(){
     else statusHtml=`<span class="status-ok">🟢 Ativo</span>`;
     const openPedidos=pedidos.filter(p=>p.cliente_nome.toLowerCase()===c.name.toLowerCase()&&['aguardando','disponivel','notificado'].includes(p.status)).length;
     const pedidosHtml=openPedidos?`<span style="color:var(--orange);font-weight:600">📦 ${openPedidos}</span>`:`<span style="color:var(--td)">—</span>`;
+    const clMeta=clientesMeta[c.name.toLowerCase()];
+    const telefoneHtml=clMeta&&clMeta.telefone?`<span style="color:var(--tm)">${clMeta.telefone}</span>`:`<span style="color:var(--td)">—</span>`;
     return`<tr>
       <td style="font-weight:600">${c.name}</td>
+      <td class="mn" style="font-size:.8rem">${telefoneHtml}</td>
       <td class="mn" style="color:var(--sage)">${fmt(c.total)}</td>
       <td class="mn" style="text-align:center">${c.compras}</td>
       <td><span class="badge ${CB[c.favCat]}">${CL[c.favCat]}</span></td>
       <td class="mn" style="font-size:.78rem;color:var(--tmu)">${d}/${mo}/${y} · ${c.daysSince}d atrás</td>
       <td>${statusHtml}</td>
       <td>${pedidosHtml}</td>
+      <td><button class="edit-btn" onclick="openEditCliente('${c.name.replace(/'/g,"\\'")}')" title="Editar">✏️</button></td>
     </tr>`;
   }).join('');
+}
+
+function openEditCliente(name){
+  editingClienteName=name;
+  const meta=clientesMeta[name.toLowerCase()]||{telefone:'',notas:''};
+  document.getElementById('ecNome').value=name;
+  document.getElementById('ecTelefone').value=meta.telefone||'';
+  document.getElementById('ecNotas').value=meta.notas||'';
+  document.getElementById('editClienteModal').classList.add('open');
+}
+function closeEditCliente(){
+  editingClienteName=null;
+  document.getElementById('editClienteModal').classList.remove('open');
+}
+async function saveEditCliente(){
+  if(!editingClienteName)return;
+  const telefone=document.getElementById('ecTelefone').value.trim();
+  const notas=document.getElementById('ecNotas').value.trim();
+  const btn=document.getElementById('btnEditClienteSave');
+  btn.disabled=true;btn.textContent='Salvando...';
+  const key=editingClienteName.toLowerCase();
+  const row={id:clientesMeta[key]?.id||(Date.now()+''),nome:editingClienteName,telefone,notas};
+  try{
+    const{error}=await db.from('clientes').upsert([row],{onConflict:'nome'});
+    if(error)throw error;
+    clientesMeta[key]=row;
+    closeEditCliente();rClientes();toast('Cliente atualizado!');
+  }catch(e){toast('Erro: '+e.message,true)}
+  finally{btn.disabled=false;btn.textContent='Salvar alterações'}
 }
 
 function renderKPIs(){
@@ -2061,6 +2329,10 @@ function toast(msg,err){
 // Close modal on overlay click
 document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)closeEdit()});
 document.getElementById('editExpModal').addEventListener('click',function(e){if(e.target===this)closeEditExp()});
+document.getElementById('editPedidoModal').addEventListener('click',function(e){if(e.target===this)closeEditPedido()});
+document.getElementById('editEnvioModal').addEventListener('click',function(e){if(e.target===this)closeEditEnvio()});
+document.getElementById('editEnvioItemModal').addEventListener('click',function(e){if(e.target===this)closeEditEnvioItem()});
+document.getElementById('editClienteModal').addEventListener('click',function(e){if(e.target===this)closeEditCliente()});
 
 boot();
 </script>
