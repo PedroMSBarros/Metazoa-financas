@@ -73,7 +73,7 @@ header{border-bottom:1px solid var(--bor);background:rgba(14,7,2,.92);position:s
 .tabs::-webkit-scrollbar{display:none}
 .tb{background:none;border:none;color:var(--tmu);font-family:var(--font);font-size:.82rem;font-weight:600;padding:.8rem 1.1rem;cursor:pointer;letter-spacing:.05em;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .2s,border-color .2s;text-transform:uppercase;flex-shrink:0}
 .tb.active{color:var(--sage);border-color:var(--sage)}
-.tb-badge{display:inline-block;margin-left:.4rem;background:var(--orange);color:#fff;font-size:.62rem;font-weight:800;padding:.1rem .4rem;border-radius:999px;vertical-align:middle;letter-spacing:0}
+.tb-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;margin-left:.45rem;background:var(--orange);color:#fff;font-family:var(--mono);font-size:.78rem;font-weight:700;padding:0 .4rem;border-radius:999px;vertical-align:middle;letter-spacing:0;line-height:1;box-shadow:0 0 0 2px rgba(28,15,3,.6)}
 .tb:hover:not(.active){color:var(--text)}
 
 /* KPI CARDS */
@@ -127,6 +127,14 @@ select option{background:var(--bm)}
 .cli-summary-ok{background:rgba(106,191,53,.08);border:1px solid rgba(106,191,53,.25);border-radius:10px;padding:.85rem 1.1rem;margin-top:1rem;font-size:.84rem;color:var(--sage);display:flex;align-items:center;gap:.6rem}
 
 /* SALE GROUPS (Histórico) */
+.month-section{margin-bottom:1.75rem}
+.month-header{display:flex;align-items:baseline;justify-content:space-between;gap:.75rem;padding:0 .1rem .6rem;border-bottom:1px solid var(--bor2);margin-bottom:.85rem;flex-wrap:wrap}
+.month-title{font-size:.95rem;font-weight:800;color:var(--sage);text-transform:uppercase;letter-spacing:.05em}
+.month-stats{font-family:var(--mono);font-size:.76rem;color:var(--tmu)}
+.add-item-row{display:flex;gap:.4rem;flex-wrap:wrap;padding:.75rem .9rem;background:rgba(197,212,154,.03);border-top:1px solid rgba(197,212,154,.06)}
+.add-item-row input,.add-item-row select{width:auto;flex:1;min-width:80px;font-size:.78rem;padding:.4rem .55rem}
+.add-item-row input[type="number"]{max-width:75px;flex:none}
+.add-item-row .btn-outline{padding:.4rem .8rem;font-size:.72rem;flex:none}
 .sale-group{background:var(--bc);border:1px solid var(--bor);border-radius:12px;margin-bottom:.85rem;overflow:hidden}
 .sale-header{display:flex;align-items:center;justify-content:space-between;padding:.9rem 1.1rem;cursor:pointer;gap:1rem;flex-wrap:wrap}
 .sale-header:hover{background:rgba(197,212,154,.03)}
@@ -261,6 +269,35 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 .insight-label{font-size:.67rem;color:var(--tmu);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.3rem}
 .insight-value{font-size:.9rem;font-weight:700;color:var(--text)}
 .insight-sub{font-size:.72rem;color:var(--td);margin-top:.2rem}
+
+/* CALENDÁRIO & TAREFAS */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.cal-month-label{font-size:.82rem;font-weight:700;color:var(--sage);text-transform:uppercase;letter-spacing:.05em}
+.cal-nav{background:none;border:1px solid var(--bor2);color:var(--tmu);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:1rem;line-height:1;transition:all .15s;font-family:var(--font)}
+.cal-nav:hover{border-color:var(--sage);color:var(--sage)}
+.cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:.62rem;color:var(--td);text-transform:uppercase;margin-bottom:.3rem}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:1rem}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:.76rem;color:var(--tm);position:relative;transition:background .15s}
+.cal-day:hover{background:var(--bm)}
+.cal-day.empty{cursor:default;visibility:hidden}
+.cal-day.today{border:1px solid var(--sagem);color:var(--sage);font-weight:700}
+.cal-day.selected{background:var(--green);color:#fff;font-weight:700}
+.cal-day .dot{width:4px;height:4px;border-radius:50%;background:var(--orange);position:absolute;bottom:3px}
+.cal-day.selected .dot{background:#fff}
+.task-add-row{display:flex;gap:.4rem;margin-bottom:.75rem}
+.task-add-row input[type="text"]{flex:1;font-size:.8rem;padding:.45rem .6rem}
+.task-add-row input[type="date"]{width:120px;font-size:.75rem;padding:.45rem .4rem;flex:none}
+.task-add-row .btn-outline{flex:none;padding:.45rem .8rem}
+.task-list-title{font-size:.68rem;color:var(--tmu);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+.task-item{display:flex;align-items:center;gap:.6rem;padding:.5rem .1rem;border-bottom:1px solid rgba(197,212,154,.06)}
+.task-item:last-child{border-bottom:none}
+.task-check{width:17px;height:17px;border-radius:5px;border:1px solid var(--bor2);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:transparent;transition:all .15s}
+.task-check.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-title{flex:1;font-size:.82rem;color:var(--text)}
+.task-title.done{color:var(--td);text-decoration:line-through}
+.task-del{background:none;border:none;color:var(--td);cursor:pointer;font-size:.8rem;padding:.2rem .3rem}
+.task-del:hover{color:var(--loss)}
+.task-empty{font-size:.78rem;color:var(--td);padding:.5rem 0}
 
 /* MONTHLY */
 .mwrap{border:1px solid var(--bor);border-radius:12px;overflow:hidden}
@@ -430,6 +467,25 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       </div>
       <div class="chg">
         <div class="chc"><div class="chl">Insights</div><div id="insightsList"></div></div>
+        <div class="chc">
+          <div class="chl">Calendário &amp; Tarefas</div>
+          <div class="cal-header">
+            <button class="cal-nav" onclick="calNav(-1)">‹</button>
+            <span class="cal-month-label" id="calMonthLabel"></span>
+            <button class="cal-nav" onclick="calNav(1)">›</button>
+          </div>
+          <div class="cal-weekdays">
+            <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="task-add-row">
+            <input id="taskTitle" type="text" placeholder="Nova tarefa...">
+            <input id="taskDate" type="date">
+            <button class="btn-outline" onclick="addTask()">+</button>
+          </div>
+          <div class="task-list-title" id="taskListTitle">Tarefas de hoje</div>
+          <div id="taskList"></div>
+        </div>
       </div>
     </div>
 
@@ -926,6 +982,10 @@ let editingEnvioId=null;
 let editingEnvioItemId=null,editingEnvioItemEnvioId=null;
 let clientesMeta={};
 let editingClienteName=null;
+let tarefas=[];
+let calToday=new Date();
+let calViewYear=calToday.getFullYear(),calViewMonth=calToday.getMonth();
+let calSelectedDate=calToday.toISOString().split('T')[0];
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -981,6 +1041,9 @@ async function loadApp(user){
     if(clError)throw clError;
     clientesMeta={};
     (clData||[]).forEach(c=>{clientesMeta[c.nome.toLowerCase()]=c});
+    const{data:tskData,error:tskError}=await db.from('tarefas').select('*').order('data',{ascending:true});
+    if(tskError)throw tskError;
+    tarefas=tskData||[];
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -989,6 +1052,7 @@ async function loadApp(user){
     document.getElementById('exD_date').value=new Date().toISOString().split('T')[0];
     document.getElementById('pData').value=new Date().toISOString().split('T')[0];
     document.getElementById('evData').value=new Date().toISOString().split('T')[0];
+    document.getElementById('taskDate').value=calSelectedDate;
     buildP();buildKpiMonths();buildAutocomplete();renderAll();
     if(metaMensal>0) document.getElementById('metaInput').value=metaMensal;
     if(recontatoDias>0) document.getElementById('recontatoInput').value=recontatoDias;
@@ -1403,7 +1467,100 @@ function rExpenses(){
 }
 
 /* ── RENDER ── */
-function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();rEnvios();}
+function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();rEnvios();renderCalendar();renderTaskList();}
+
+/* ── CALENDÁRIO & TAREFAS ── */
+const CAL_MOF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function calNav(delta){
+  calViewMonth+=delta;
+  if(calViewMonth<0){calViewMonth=11;calViewYear--}
+  if(calViewMonth>11){calViewMonth=0;calViewYear++}
+  renderCalendar();
+}
+
+function selectCalDay(dateStr){
+  calSelectedDate=dateStr;
+  const ti=document.getElementById('taskDate');
+  if(ti)ti.value=dateStr;
+  renderCalendar();
+  renderTaskList();
+}
+
+function renderCalendar(){
+  const grid=document.getElementById('calGrid'),label=document.getElementById('calMonthLabel');
+  if(!grid)return;
+  label.textContent=`${CAL_MOF[calViewMonth]} ${calViewYear}`;
+
+  const taskDates=new Set(tarefas.map(t=>t.data));
+  const firstDay=new Date(calViewYear,calViewMonth,1).getDay();
+  const daysInMonth=new Date(calViewYear,calViewMonth+1,0).getDate();
+  const todayStr=calToday.toISOString().split('T')[0];
+
+  let html='';
+  for(let i=0;i<firstDay;i++)html+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr=`${calViewYear}-${String(calViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cls=['cal-day'];
+    if(dateStr===todayStr)cls.push('today');
+    if(dateStr===calSelectedDate)cls.push('selected');
+    const hasTask=taskDates.has(dateStr);
+    html+=`<div class="${cls.join(' ')}" onclick="selectCalDay('${dateStr}')">${d}${hasTask?'<span class="dot"></span>':''}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
+async function addTask(){
+  const titulo=document.getElementById('taskTitle').value.trim();
+  const data=document.getElementById('taskDate').value||calSelectedDate;
+  if(!titulo){toast('Digite a tarefa',true);return}
+  const row={id:Date.now()+'',titulo,data,concluida:false};
+  try{
+    const{error}=await db.from('tarefas').insert([row]);
+    if(error)throw error;
+    tarefas.push(row);
+    document.getElementById('taskTitle').value='';
+    calSelectedDate=data;
+    renderCalendar();renderTaskList();
+    toast('Tarefa adicionada!');
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+async function toggleTask(id){
+  const t=tarefas.find(x=>x.id===id);
+  if(!t)return;
+  const concluida=!t.concluida;
+  try{
+    const{error}=await db.from('tarefas').update({concluida}).eq('id',id);
+    if(error)throw error;
+    t.concluida=concluida;
+    renderTaskList();
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+async function delTask(id){
+  try{
+    const{error}=await db.from('tarefas').delete().eq('id',id);
+    if(error)throw error;
+    tarefas=tarefas.filter(x=>x.id!==id);
+    renderCalendar();renderTaskList();
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+function renderTaskList(){
+  const list=document.getElementById('taskList'),title=document.getElementById('taskListTitle');
+  if(!list)return;
+  const todayStr=calToday.toISOString().split('T')[0];
+  const dayTasks=tarefas.filter(t=>t.data===calSelectedDate).sort((a,b)=>(a.concluida?1:0)-(b.concluida?1:0));
+  const[y,mo,d]=calSelectedDate.split('-');
+  title.textContent=calSelectedDate===todayStr?'Tarefas de hoje':`Tarefas de ${d}/${mo}/${y}`;
+  if(!dayTasks.length){list.innerHTML='<div class="task-empty">Nenhuma tarefa nesse dia</div>';return}
+  list.innerHTML=dayTasks.map(t=>`<div class="task-item">
+    <div class="task-check ${t.concluida?'done':''}" onclick="toggleTask('${t.id}')">${t.concluida?'✓':''}</div>
+    <span class="task-title ${t.concluida?'done':''}">${t.titulo}</span>
+    <button class="task-del" onclick="delTask('${t.id}')">✕</button>
+  </div>`).join('');
+}
 
 /* ── PEDIDOS / LISTA DE ESPERA ── */
 const PCL={fish:'🐟 Peixe/Animal',plant:'🌿 Planta',equip:'⚙️ Equipamento',other:'📦 Outro'};
@@ -1795,6 +1952,34 @@ async function saveEditEnvioItem(){
   finally{btn.disabled=false;btn.textContent='Salvar alterações'}
 }
 
+async function delEnvioItem(itemId,envioId){
+  if(!confirm('Excluir este item do pedido?'))return;
+  try{
+    const{error}=await db.from('envio_itens').delete().eq('id',itemId);
+    if(error)throw error;
+    envioItensMap[envioId]=(envioItensMap[envioId]||[]).filter(x=>x.id!==itemId);
+    rEnvios();toast('Item removido');
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+async function addItemToEnvio(envioId,rowId){
+  const nome=document.getElementById('aei_name_'+rowId).value.trim();
+  const categoria=document.getElementById('aei_cat_'+rowId).value;
+  const qty=parseInt(document.getElementById('aei_qty_'+rowId).value)||1;
+  const cost=parseFloat(document.getElementById('aei_cost_'+rowId).value)||0;
+  const price=parseFloat(document.getElementById('aei_price_'+rowId).value)||0;
+  if(!nome){toast('Digite o nome do produto',true);return}
+  const row={id:envioId+'_'+Math.random().toString(36).slice(2,7),envio_id:envioId,nome,categoria,qty,cost,price};
+  try{
+    const{error}=await db.from('envio_itens').insert([row]);
+    if(error)throw error;
+    if(!envioItensMap[envioId])envioItensMap[envioId]=[];
+    envioItensMap[envioId].push(row);
+    openEnvioGroups.add(envioId);
+    rEnvios();toast('Item adicionado!');
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
 async function transferToLancamentos(id){
   const ev=envios.find(e=>e.id===id);
   const items=envioItensMap[id]||[];
@@ -1840,13 +2025,15 @@ function rEnvios(){
     const items=envioItensMap[ev.id]||[];
     const isOpen=openEnvioGroups.has(ev.id);
     const[y,mo,d]=ev.data_pedido.split('-');
-    const itemsHtml=items.map(it=>`<tr style="cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')" title="Clique para editar">
-      <td style="font-weight:600">${it.name||it.nome}</td>
-      <td><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
-      <td class="mn" style="text-align:center">${it.qty}</td>
-      <td class="mn" style="color:var(--orange)">${it.cost>0?fmt(it.cost):'—'}</td>
-      <td class="mn" style="color:var(--sage)">${it.price>0?fmt(it.price):'—'}</td>
+    const itemsHtml=items.map(it=>`<tr>
+      <td style="font-weight:600;cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')" title="Clique para editar">${it.name||it.nome}</td>
+      <td style="cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')"><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
+      <td class="mn" style="text-align:center;cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')">${it.qty}</td>
+      <td class="mn" style="color:var(--orange);cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')">${it.cost>0?fmt(it.cost):'—'}</td>
+      <td class="mn" style="color:var(--sage);cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')">${it.price>0?fmt(it.price):'—'}</td>
+      <td><button class="db2" onclick="event.stopPropagation();delEnvioItem('${it.id}','${ev.id}')" title="Excluir item">✕</button></td>
     </tr>`).join('');
+    const addRowId=ev.id.replace(/[^a-zA-Z0-9]/g,'');
     return`<div class="sale-group ${isOpen?'open':''}" id="evg_${ev.id}">
       <div class="sale-header" onclick="toggleEnvioGroup('${ev.id}')">
         <div class="sale-head-left">
@@ -1862,13 +2049,24 @@ function rEnvios(){
       <div class="sale-body">
         <div class="sale-items tw" style="border:none;border-radius:0">
           <table>
-            <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th></tr></thead>
+            <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th><th></th></tr></thead>
             <tbody>${itemsHtml}</tbody>
           </table>
         </div>
+        <div class="add-item-row" onclick="event.stopPropagation()">
+          <input type="text" id="aei_name_${addRowId}" placeholder="+ Novo item...">
+          <select id="aei_cat_${addRowId}">
+            <option value="fish">🐟 Peixe</option><option value="plant">🌿 Planta</option>
+            <option value="equip">⚙️ Equip.</option><option value="other">📦 Outro</option>
+          </select>
+          <input type="number" id="aei_qty_${addRowId}" value="1" min="1" placeholder="Qtd">
+          <input type="number" id="aei_cost_${addRowId}" placeholder="Custo" step="0.01" min="0">
+          <input type="number" id="aei_price_${addRowId}" placeholder="Venda" step="0.01" min="0">
+          <button class="btn-outline" onclick="addItemToEnvio('${ev.id}','${addRowId}')">+ Item</button>
+        </div>
         <div class="sale-freight" style="justify-content:flex-end;gap:.6rem">
           <button class="p-action-btn" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();transferToLancamentos('${ev.id}')">Transferir p/ Lançamentos</button>
-          <button class="p-action-btn secondary" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();delEnvio('${ev.id}')">Excluir</button>
+          <button class="p-action-btn secondary" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();delEnvio('${ev.id}')">Excluir pedido</button>
         </div>
       </div>
     </div>`;
@@ -2066,7 +2264,11 @@ function rT(){
   if(!groups.length){wrap.innerHTML='';te.style.display='block';return}
   te.style.display='none';
 
-  wrap.innerHTML=groups.map(g=>{
+  // Monta cada card e agrupa por mês (estilo extrato)
+  const monthOrder=[];
+  const monthData={};
+
+  groups.forEach(g=>{
     const totalRec=g.items.reduce((a,t)=>a+t.price*t.qty,0);
     const totalCst=g.items.reduce((a,t)=>a+t.cost*t.qty,0);
     const totalLuc=totalRec-totalCst;
@@ -2101,7 +2303,7 @@ function rT(){
       ${meta&&meta.discount>0?`<div class="sale-freight"><span>💸 Desconto concedido: ${fmt(meta.discount)}</span></div>`:''}
       ${meta&&meta.comments?`<div class="sale-freight"><span>💬 ${meta.comments}</span></div>`:''}`;
 
-    return`<div class="sale-group ${isOpen?'open':''}" id="sg_${g.saleId}">
+    const cardHtml=`<div class="sale-group ${isOpen?'open':''}" id="sg_${g.saleId}">
       <div class="sale-header" onclick="toggleSaleGroup('${g.saleId}')">
         <div class="sale-head-left">
           <span class="sale-client ${g.client?'':'anon'}">${g.client||'Venda avulsa'}</span>
@@ -2123,6 +2325,25 @@ function rT(){
         </div>
         ${freightHtml}
       </div>
+    </div>`;
+
+    const mk=g.date.slice(0,7);
+    if(!monthData[mk]){monthData[mk]={cards:[],rec:0,luc:0,count:0};monthOrder.push(mk);}
+    monthData[mk].cards.push(cardHtml);
+    monthData[mk].rec+=totalRec;
+    monthData[mk].luc+=totalLuc;
+    monthData[mk].count++;
+  });
+
+  wrap.innerHTML=monthOrder.map(mk=>{
+    const[y,mo]=mk.split('-');
+    const md=monthData[mk];
+    return`<div class="month-section">
+      <div class="month-header">
+        <span class="month-title">${MOF[+mo-1]} ${y}</span>
+        <span class="month-stats">${md.count} venda${md.count>1?'s':''} · <span style="color:var(--sage)">${fmt(md.rec)}</span> · <span style="color:${md.luc>=0?'var(--profit)':'var(--loss)'}">${fmt(md.luc)}</span></span>
+      </div>
+      ${md.cards.join('')}
     </div>`;
   }).join('');
 }
