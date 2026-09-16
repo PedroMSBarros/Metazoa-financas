@@ -2561,17 +2561,40 @@ function renderInsights(d){
   const bestQ=Object.entries(bq).sort((a,b)=>b[1]-a[1])[0];
   if(bestQ)insights.push({icon:'📦',label:'Mais vendido',value:bestQ[0].length>20?bestQ[0].slice(0,18)+'…':bestQ[0],sub:`${bestQ[1]} unidades no período`});
 
-  // Produto mais lucrativo
-  const bl={};
-  d.forEach(t=>{if(!bl[t.name])bl[t.name]=0;bl[t.name]+=(t.price-t.cost)*t.qty});
-  const bestL=Object.entries(bl).sort((a,b)=>b[1]-a[1])[0];
-  if(bestL)insights.push({icon:'💰',label:'Mais lucrativo',value:bestL[0].length>20?bestL[0].slice(0,18)+'…':bestL[0],sub:`${fmt(bestL[1])} de lucro total`});
+  // Produto mais lucrativo — combina margem % e quantidade vendida (não só lucro total bruto)
+  const blStats={};
+  d.forEach(t=>{
+    if(!blStats[t.name])blStats[t.name]={qty:0,rec:0,cst:0};
+    blStats[t.name].qty+=t.qty;
+    blStats[t.name].rec+=t.price*t.qty;
+    blStats[t.name].cst+=t.cost*t.qty;
+  });
+  const blEntries=Object.entries(blStats).map(([name,s])=>({
+    name,qty:s.qty,lucro:s.rec-s.cst,margem:s.rec>0?((s.rec-s.cst)/s.rec)*100:0
+  }));
+  if(blEntries.length){
+    const maxMargem=Math.max(...blEntries.map(x=>x.margem))||1;
+    const maxQty=Math.max(...blEntries.map(x=>x.qty))||1;
+    blEntries.forEach(x=>{x.score=(x.margem/maxMargem)+(x.qty/maxQty)});
+    const bestL=blEntries.sort((a,b)=>b.score-a.score)[0];
+    insights.push({icon:'💰',label:'Mais lucrativo',value:bestL.name.length>20?bestL.name.slice(0,18)+'…':bestL.name,sub:`${pct(bestL.margem)} de margem · ${bestL.qty} unidades · ${fmt(bestL.lucro)} de lucro`});
+  }
 
-  // Melhor cliente
-  const bcl={};
-  d.filter(t=>t.client).forEach(t=>{if(!bcl[t.client])bcl[t.client]=0;bcl[t.client]+=t.price*t.qty});
-  const bestCl=Object.entries(bcl).sort((a,b)=>b[1]-a[1])[0];
-  if(bestCl)insights.push({icon:'⭐',label:'Melhor cliente',value:bestCl[0],sub:`${fmt(bestCl[1])} em compras`});
+  // Melhor cliente — combina número de compras e valor total gasto
+  const bclStats={};
+  d.filter(t=>t.client).forEach(t=>{
+    if(!bclStats[t.client])bclStats[t.client]={compras:new Set(),gasto:0};
+    bclStats[t.client].compras.add(t.sale_id||t.id);
+    bclStats[t.client].gasto+=t.price*t.qty;
+  });
+  const bclEntries=Object.entries(bclStats).map(([name,s])=>({name,compras:s.compras.size,gasto:s.gasto}));
+  if(bclEntries.length){
+    const maxCompras=Math.max(...bclEntries.map(x=>x.compras))||1;
+    const maxGasto=Math.max(...bclEntries.map(x=>x.gasto))||1;
+    bclEntries.forEach(x=>{x.score=(x.compras/maxCompras)+(x.gasto/maxGasto)});
+    const bestCl=bclEntries.sort((a,b)=>b.score-a.score)[0];
+    insights.push({icon:'⭐',label:'Melhor cliente',value:bestCl.name,sub:`${bestCl.compras} compra${bestCl.compras>1?'s':''} · ${fmt(bestCl.gasto)} em compras`});
+  }
 
   // Margem geral
   const rec=d.reduce((a,t)=>a+t.price*t.qty,0);
