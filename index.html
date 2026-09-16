@@ -299,6 +299,20 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 .task-del:hover{color:var(--loss)}
 .task-empty{font-size:.78rem;color:var(--td);padding:.5rem 0}
 
+/* BLOCO DE NOTAS */
+.notes-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.6rem}
+.notes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.85rem}
+.note-card{border-radius:10px;padding:.8rem .85rem;min-height:120px;display:flex;flex-direction:column;position:relative}
+.note-card.c-yellow{background:rgba(232,192,64,.07);border:1px solid rgba(232,192,64,.28)}
+.note-card.c-orange{background:rgba(224,120,48,.07);border:1px solid rgba(224,120,48,.28)}
+.note-card.c-sage{background:rgba(197,212,154,.07);border:1px solid rgba(197,212,154,.28)}
+.note-card.c-green{background:rgba(77,158,31,.08);border:1px solid rgba(77,158,31,.3)}
+.note-text{background:none;border:none;color:var(--text);font-family:var(--font);font-size:.82rem;line-height:1.45;flex:1;resize:none;outline:none;width:100%;padding-right:1.3rem}
+.note-text::placeholder{color:var(--td)}
+.note-del{position:absolute;top:.5rem;right:.55rem;background:none;border:none;color:var(--td);cursor:pointer;font-size:.75rem;padding:.1rem .3rem;opacity:.55;transition:opacity .15s,color .15s}
+.note-del:hover{opacity:1;color:var(--loss)}
+.notes-empty{font-size:.8rem;color:var(--td);padding:.5rem 0}
+
 /* MONTHLY */
 .mwrap{border:1px solid var(--bor);border-radius:12px;overflow:hidden}
 .mhead{display:grid;grid-template-columns:1.4fr 1fr 1fr 1.1fr 60px;background:var(--bm);padding:.65rem 1rem;font-size:.67rem;text-transform:uppercase;letter-spacing:.1em;color:var(--tmu);font-weight:600}
@@ -485,6 +499,16 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
           </div>
           <div class="task-list-title" id="taskListTitle">Tarefas de hoje</div>
           <div id="taskList"></div>
+        </div>
+      </div>
+
+      <div class="chg">
+        <div class="chc">
+          <div class="notes-head">
+            <div class="chl" style="margin-bottom:0">Bloco de Notas</div>
+            <button class="btn-outline" onclick="addNote()">+ Nova nota</button>
+          </div>
+          <div class="notes-grid" id="notesGrid"></div>
         </div>
       </div>
     </div>
@@ -986,6 +1010,7 @@ let tarefas=[];
 let calToday=new Date();
 let calViewYear=calToday.getFullYear(),calViewMonth=calToday.getMonth();
 let calSelectedDate=calToday.toISOString().split('T')[0];
+let notas=[];
 let metaMensal=parseFloat(localStorage.getItem('mtz_meta')||'0');
 let productMemory={},clientNamesSet=new Set();
 let recontatoDias=parseInt(localStorage.getItem('mtz_recontato')||'30');
@@ -1044,6 +1069,9 @@ async function loadApp(user){
     const{data:tskData,error:tskError}=await db.from('tarefas').select('*').order('data',{ascending:true});
     if(tskError)throw tskError;
     tarefas=tskData||[];
+    const{data:noteData,error:noteError}=await db.from('notas_adesivas').select('*').order('created_at',{ascending:true});
+    if(noteError)throw noteError;
+    notas=noteData||[];
     document.getElementById('loader').style.display='none';
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
@@ -1467,7 +1495,51 @@ function rExpenses(){
 }
 
 /* ── RENDER ── */
-function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();rEnvios();renderCalendar();renderTaskList();}
+function renderAll(){renderKPIs();rT();rM();rCh();rClientes();rExpenses();rPedidos();rEnvios();renderCalendar();renderTaskList();renderNotes();}
+
+/* ── BLOCO DE NOTAS ── */
+const NOTE_COLORS=['c-yellow','c-orange','c-sage','c-green'];
+
+function renderNotes(){
+  const grid=document.getElementById('notesGrid');
+  if(!grid)return;
+  if(!notas.length){grid.innerHTML='<div class="notes-empty">Nenhuma nota ainda — clique em "+ Nova nota" pra começar.</div>';return}
+  grid.innerHTML=notas.map((n,i)=>`<div class="note-card ${NOTE_COLORS[i%NOTE_COLORS.length]}">
+    <textarea class="note-text" rows="4" placeholder="Escreva algo..." onblur="saveNoteText('${n.id}',this.value)">${n.texto||''}</textarea>
+    <button class="note-del" onclick="delNote('${n.id}')" title="Excluir nota">✕</button>
+  </div>`).join('');
+}
+
+async function addNote(){
+  const row={id:Date.now()+'',texto:''};
+  try{
+    const{error}=await db.from('notas_adesivas').insert([row]);
+    if(error)throw error;
+    notas.push(row);
+    renderNotes();
+    const areas=document.querySelectorAll('#notesGrid .note-text');
+    if(areas.length)areas[areas.length-1].focus();
+  }catch(e){toast('Erro: '+e.message,true)}
+}
+
+async function saveNoteText(id,texto){
+  const n=notas.find(x=>x.id===id);
+  if(!n||n.texto===texto)return;
+  n.texto=texto;
+  try{
+    const{error}=await db.from('notas_adesivas').update({texto}).eq('id',id);
+    if(error)throw error;
+  }catch(e){toast('Erro ao salvar nota: '+e.message,true)}
+}
+
+async function delNote(id){
+  try{
+    const{error}=await db.from('notas_adesivas').delete().eq('id',id);
+    if(error)throw error;
+    notas=notas.filter(x=>x.id!==id);
+    renderNotes();
+  }catch(e){toast('Erro: '+e.message,true)}
+}
 
 /* ── CALENDÁRIO & TAREFAS ── */
 const CAL_MOF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
