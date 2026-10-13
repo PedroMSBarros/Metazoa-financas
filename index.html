@@ -387,6 +387,21 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 @media(max-width:400px){
   .cg{grid-template-columns:1fr}
 }
+
+/* ===== Envios — KPIs, checklist e histórico ===== */
+.ev-kpis{display:flex;gap:.5rem;flex-wrap:wrap}
+.ev-kpi{font-family:var(--mono);font-size:.72rem;color:var(--tmu);background:var(--bc);border:1px solid var(--bor);padding:.28rem .7rem;border-radius:999px;white-space:nowrap}
+.ev-kpi b{font-weight:500;margin-left:.3rem}
+.ev-prog{font-family:var(--mono);font-size:.7rem;color:var(--sagem);background:rgba(197,212,154,.08);border:1px solid var(--bor);padding:.12rem .5rem;border-radius:999px;white-space:nowrap}
+.ev-prog.done{color:#8acf50;background:rgba(77,158,31,.15);border-color:rgba(77,158,31,.35)}
+.ev-chk{appearance:none;-webkit-appearance:none;width:16px!important;min-width:16px;height:16px!important;padding:0!important;display:inline-block;border:1.5px solid var(--bor2);border-radius:4px;background:var(--bd);cursor:pointer;vertical-align:middle;margin-right:.6rem;position:relative;flex-shrink:0;transition:all .15s}
+.ev-chk:checked{background:var(--green);border-color:var(--green)}
+.ev-chk:checked::after{content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ev-cell{display:flex;align-items:center}
+.sale-items tr.ev-done td{opacity:.45}
+.sale-items tr.ev-done .ev-name{text-decoration:line-through}
+.ev-hist .sale-header{opacity:.8}
+.ev-sent{font-family:var(--mono);font-size:.7rem;color:#8acf50;background:rgba(77,158,31,.12);padding:.12rem .55rem;border-radius:999px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -823,9 +838,17 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 
       <div class="th2">
         <div class="stitle" style="margin:0" id="enviosTitle">Aguardando envio</div>
+        <div class="ev-kpis" id="enviosKpis"></div>
       </div>
       <div id="enviosBoard"></div>
       <div id="enviosEmpty" class="empty" style="display:none"><div class="ei">📮</div><div>Nenhum pedido aguardando envio</div></div>
+
+      <div id="enviosHistWrap" style="display:none">
+        <div class="th2" style="margin-top:2rem">
+          <div class="stitle" style="margin:0" id="enviosHistTitle">Histórico de envios</div>
+        </div>
+        <div id="enviosHist"></div>
+      </div>
     </div>
 
     <!-- MENSAL -->
@@ -2079,9 +2102,10 @@ async function transferToLancamentos(id){
 
   // Marca como enviado e tira da fila ativa
   try{
-    const{error}=await db.from('envios').update({status:'enviado'}).eq('id',id);
+    const hoje=new Date(),enviado_em=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    const{error}=await db.from('envios').update({status:'enviado',enviado_em}).eq('id',id);
     if(error)throw error;
-    envios=envios.filter(e=>e.id!==id);
+    ev.status='enviado';ev.enviado_em=enviado_em;
     rEnvios();
   }catch(e){toast('Erro ao atualizar status: '+e.message,true)}
 
@@ -2102,14 +2126,28 @@ function rEnvios(){
   const title=document.getElementById('enviosTitle');
   if(title)title.textContent=ativos.length?`Aguardando envio (${ativos.length})`:'Aguardando envio';
 
+  // KPIs: custo, lucro e itens de todos os pedidos aguardando
+  let kCusto=0,kVenda=0,kQtd=0;
+  ativos.forEach(ev=>(envioItensMap[ev.id]||[]).forEach(it=>{
+    const q=Number(it.qty)||0;kCusto+=(Number(it.cost)||0)*q;kVenda+=(Number(it.price)||0)*q;kQtd+=q;
+  }));
+  const kpis=document.getElementById('enviosKpis');
+  if(kpis)kpis.innerHTML=ativos.length?
+    `<span class="ev-kpi">Custo<b style="color:var(--orange)">${fmt(kCusto)}</b></span>`+
+    `<span class="ev-kpi">Lucro<b style="color:var(--profit)">${fmt(kVenda-kCusto)}</b></span>`+
+    `<span class="ev-kpi">Itens<b style="color:var(--yellow)">${kQtd}</b></span>`:'';
+
+  rEnviosHist();
+
   if(!ativos.length){board.innerHTML='';empty.style.display='block';return}
   empty.style.display='none';
   board.innerHTML=ativos.map(ev=>{
     const items=envioItensMap[ev.id]||[];
     const isOpen=openEnvioGroups.has(ev.id);
     const[y,mo,d]=ev.data_pedido.split('-');
-    const itemsHtml=items.map(it=>`<tr>
-      <td style="font-weight:600;cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')" title="Clique para editar">${it.name||it.nome}</td>
+    const nPrep=items.filter(it=>it.preparado).length;
+    const itemsHtml=items.map(it=>`<tr class="${it.preparado?'ev-done':''}">
+      <td style="font-weight:600;cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')" title="Clique para editar"><div class="ev-cell"><input type="checkbox" class="ev-chk" ${it.preparado?'checked':''} onclick="event.stopPropagation()" onchange="toggleEnvioItemPrep('${it.id}','${ev.id}',this.checked)" title="Marcar como preparado"><span class="ev-name">${it.name||it.nome}</span></div></td>
       <td style="cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')"><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
       <td class="mn" style="text-align:center;cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')">${it.qty}</td>
       <td class="mn" style="color:var(--orange);cursor:pointer" onclick="openEditEnvioItem('${it.id}','${ev.id}')">${it.cost>0?fmt(it.cost):'—'}</td>
@@ -2125,6 +2163,7 @@ function rEnvios(){
           <span class="sale-count">${items.length} ${items.length>1?'itens':'item'}</span>
         </div>
         <div class="sale-head-right">
+          ${items.length?`<span class="ev-prog ${nPrep===items.length?'done':''}">${nPrep}/${items.length} preparados</span>`:''}
           <button class="sale-freight-edit" onclick="event.stopPropagation();openEditEnvio('${ev.id}')">✏️ Editar</button>
           <span class="sale-chevron">▼</span>
         </div>
@@ -2150,6 +2189,62 @@ function rEnvios(){
         <div class="sale-freight" style="justify-content:flex-end;gap:.6rem">
           <button class="p-action-btn" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();transferToLancamentos('${ev.id}')">Transferir p/ Lançamentos</button>
           <button class="p-action-btn secondary" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();delEnvio('${ev.id}')">Excluir pedido</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleEnvioItemPrep(itemId,envioId,checked){
+  const it=(envioItensMap[envioId]||[]).find(x=>x.id===itemId);
+  if(!it)return;
+  it.preparado=checked;rEnvios();
+  try{
+    const{error}=await db.from('envio_itens').update({preparado:checked}).eq('id',itemId);
+    if(error)throw error;
+  }catch(e){it.preparado=!checked;rEnvios();toast('Erro ao salvar: '+e.message,true)}
+}
+
+function rEnviosHist(){
+  const wrap=document.getElementById('enviosHistWrap'),box=document.getElementById('enviosHist');
+  if(!wrap||!box)return;
+  const feitos=envios.filter(e=>e.status==='enviado')
+    .sort((a,b)=>(b.enviado_em||b.data_pedido||'').localeCompare(a.enviado_em||a.data_pedido||''));
+  if(!feitos.length){wrap.style.display='none';box.innerHTML='';return}
+  wrap.style.display='block';
+  document.getElementById('enviosHistTitle').textContent=`Histórico de envios (${feitos.length})`;
+  box.innerHTML=feitos.map(ev=>{
+    const items=envioItensMap[ev.id]||[];
+    const isOpen=openEnvioGroups.has(ev.id);
+    const[y,mo,d]=(ev.data_pedido||'--').split('-');
+    let sent='✓ Enviado';
+    if(ev.enviado_em){const[,sm,sd]=ev.enviado_em.split('-');sent+=` ${sd}/${sm}`;}
+    const rows=items.map(it=>`<tr>
+      <td style="font-weight:600">${it.name||it.nome}</td>
+      <td><span class="badge ${CB[it.categoria]||'bo'}">${CL[it.categoria]||it.categoria}</span></td>
+      <td class="mn" style="text-align:center">${it.qty}</td>
+      <td class="mn" style="color:var(--orange)">${it.cost>0?fmt(it.cost):'—'}</td>
+      <td class="mn" style="color:var(--sage)">${it.price>0?fmt(it.price):'—'}</td>
+      <td></td>
+    </tr>`).join('');
+    return`<div class="sale-group ev-hist ${isOpen?'open':''}" id="evg_${ev.id}">
+      <div class="sale-header" onclick="toggleEnvioGroup('${ev.id}')">
+        <div class="sale-head-left">
+          <span class="sale-client">${ev.cliente_nome}</span>
+          <span class="sale-date">${d}/${mo}/${y}${ev.transportadora?` · 🚚 ${ev.transportadora}`:''}</span>
+          <span class="sale-count">${items.length} ${items.length>1?'itens':'item'}</span>
+        </div>
+        <div class="sale-head-right">
+          <span class="ev-sent">${sent}</span>
+          <span class="sale-chevron">▼</span>
+        </div>
+      </div>
+      <div class="sale-body">
+        <div class="sale-items tw" style="border:none;border-radius:0">
+          <table>
+            <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th><th></th></tr></thead>
+            <tbody>${rows||'<tr><td colspan="6" style="color:var(--td)">Sem itens</td></tr>'}</tbody>
+          </table>
         </div>
       </div>
     </div>`;
