@@ -402,6 +402,17 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
 .sale-items tr.ev-done .ev-name{text-decoration:line-through}
 .ev-hist .sale-header{opacity:.8}
 .ev-sent{font-family:var(--mono);font-size:.7rem;color:#8acf50;background:rgba(77,158,31,.12);padding:.12rem .55rem;border-radius:999px;white-space:nowrap}
+@media(max-width:600px){
+  #tab-envios .ev-kpis{width:100%}
+  #tab-envios .ev-kpi{flex:1;text-align:center;padding:.4rem .4rem;font-size:.68rem}
+  #tab-envios .ev-kpi b{display:block;margin:.1rem 0 0}
+  #tab-envios .sale-items table th:nth-child(2),#tab-envios .sale-items table td:nth-child(2){display:none}
+  #tab-envios .sale-items th,#tab-envios .sale-items td{padding:.7rem .45rem}
+  #tab-envios .sale-items th:first-child,#tab-envios .sale-items td:first-child{padding-left:.9rem}
+  #tab-envios .ev-chk{width:22px!important;min-width:22px;height:22px!important;border-radius:5px;margin-right:.7rem}
+  #tab-envios .ev-chk:checked::after{left:7px;top:3px;width:5px;height:10px}
+  #tab-envios .sale-head-right{width:100%;justify-content:flex-end}
+}
 </style>
 </head>
 <body>
@@ -2205,6 +2216,22 @@ async function toggleEnvioItemPrep(itemId,envioId,checked){
   }catch(e){it.preparado=!checked;rEnvios();toast('Erro ao salvar: '+e.message,true)}
 }
 
+async function reopenEnvio(id){
+  const ev=envios.find(e=>e.id===id);
+  if(!ev)return;
+  if(!confirm(`Voltar o pedido de ${ev.cliente_nome} para "Aguardando envio"?\n\nAtenção: se a venda já foi salva em Lançamentos, ela continua lá — exclua no Histórico de vendas se precisar.`))return;
+  try{
+    const{error}=await db.from('envios').update({status:'aguardando',enviado_em:null}).eq('id',id);
+    if(error)throw error;
+    ev.status='aguardando';ev.enviado_em=null;
+    openEnvioGroups.add(id);
+    rEnvios();
+    toast('Pedido voltou para a fila de envio ✓');
+    const el=document.getElementById('evg_'+id);
+    if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+  }catch(e){toast('Erro ao reabrir: '+e.message,true)}
+}
+
 function rEnviosHist(){
   const wrap=document.getElementById('enviosHistWrap'),box=document.getElementById('enviosHist');
   if(!wrap||!box)return;
@@ -2245,6 +2272,10 @@ function rEnviosHist(){
             <thead><tr><th>Produto</th><th>Cat.</th><th style="text-align:center">Qtd</th><th>Custo</th><th>Venda</th><th></th></tr></thead>
             <tbody>${rows||'<tr><td colspan="6" style="color:var(--td)">Sem itens</td></tr>'}</tbody>
           </table>
+        </div>
+        <div class="sale-freight" style="justify-content:flex-end;gap:.6rem">
+          <button class="p-action-btn" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();reopenEnvio('${ev.id}')">↩ Voltar para aguardando envio</button>
+          <button class="p-action-btn secondary" style="flex:none;padding:.5rem 1.1rem" onclick="event.stopPropagation();delEnvio('${ev.id}')">Excluir</button>
         </div>
       </div>
     </div>`;
