@@ -1,4 +1,4 @@
-const CACHE_NAME = 'metazoa-financas-v4';
+const CACHE_NAME = 'metazoa-financas-v5';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
