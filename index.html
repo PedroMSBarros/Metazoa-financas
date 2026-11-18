@@ -510,7 +510,7 @@ tbody tr:hover td{background:rgba(197,212,154,.03)}
       </div>
       <div class="chg">
         <div class="chc"><div class="chl">Receita por categoria</div><div class="chb"><canvas id="cC"></canvas></div></div>
-        <div class="chc"><div class="chl">Top 5 produtos (lucro)</div><div class="chb"><canvas id="cTop"></canvas></div></div>
+        <div class="chc"><div class="chl" style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap"><span id="cDayTitle">Receita vs Custo — diário</span><span id="cDayCmp" style="text-transform:none;letter-spacing:0;font-family:var(--mono);font-weight:400"></span></div><div class="chb"><canvas id="cDay"></canvas></div></div>
       </div>
       <div class="chg">
         <div class="chc" style="display:flex;flex-direction:column"><div class="chl">Margem por categoria</div><div id="mBars" style="margin-top:.25rem;flex:1"></div></div>
@@ -1034,7 +1034,7 @@ const db=createClient(SU,SK);
 
 const MOS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const MOF=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-let txs=[],period='all',chL,chRC,chC,chTop,chExp;
+let txs=[],period='all',chL,chRC,chC,chDay,chExp;
 let pendingItems=[];
 let editingId=null;
 let editingExpId=null;
@@ -2634,21 +2634,8 @@ function rCh(){
   if(chC)chC.destroy();
   chC=new Chart(document.getElementById('cC'),{type:'doughnut',data:{labels:['Peixe/Animal','Planta','Equipamento','Outro'],datasets:[{data:[bc.fish,bc.plant,bc.equip,bc.other],backgroundColor:['rgba(77,158,31,.8)','rgba(197,212,154,.8)','rgba(232,192,64,.8)','rgba(122,104,72,.6)'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#b8a888',font:{family:'Syne',size:11},padding:12}},tooltip:{callbacks:{label:ctx=>' '+fmt(ctx.raw)}}}}});
 
-  // Top 5 produtos por lucro
-  const byProd={};
-  d.forEach(t=>{
-    const k=t.name;
-    if(!byProd[k])byProd[k]=0;
-    byProd[k]+=(t.price-t.cost)*t.qty;
-  });
-  const top5=Object.entries(byProd).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  if(chTop)chTop.destroy();
-  if(top5.length){
-    chTop=new Chart(document.getElementById('cTop'),{type:'bar',data:{
-      labels:top5.map(x=>x[0].length>18?x[0].slice(0,15)+'…':x[0]),
-      datasets:[{label:'Lucro',data:top5.map(x=>+x[1].toFixed(2)),backgroundColor:'rgba(106,191,53,.75)',borderRadius:5,borderSkipped:false}]
-    },options:{...cO(),indexAxis:'y'}});
-  }
+  // Receita vs Custo diário: mês atual × mês anterior (dia a dia)
+  rDayChart();
 
   // Margem bars
   const cats=[{k:'fish',l:'🐟 Peixe/Animal',c:'#6abf35'},{k:'plant',l:'🌿 Planta',c:'#c5d49a'},{k:'equip',l:'⚙️ Equipamento',c:'#e8c040'},{k:'other',l:'📦 Outro',c:'#7a6848'}];
@@ -2760,6 +2747,56 @@ function renderInsights(d){
         <div class="insight-sub">${x.sub}</div>
       </div>
     </div>`).join('');
+}
+
+function rDayChart(){
+  const hoje=new Date();
+  const y=hoje.getFullYear(),m=hoje.getMonth(),dHoje=hoje.getDate();
+  const py=m===0?y-1:y,pm=m===0?11:m-1;
+  const diasAtual=new Date(y,m+1,0).getDate(),diasAnt=new Date(py,pm+1,0).getDate();
+  const kAtual=`${y}-${String(m+1).padStart(2,'0')}`,kAnt=`${py}-${String(pm+1).padStart(2,'0')}`;
+  const n=Math.max(diasAtual,diasAnt);
+  const z=()=>Array.from({length:n},()=>0);
+  const rA=z(),cA=z(),rP=z(),cP=z();
+  txs.forEach(t=>{
+    if(!t.date)return;
+    const k=t.date.slice(0,7),d=+t.date.slice(8,10)-1;
+    if(d<0||d>=n)return;
+    const r=(Number(t.price)||0)*(Number(t.qty)||0),cs=(Number(t.cost)||0)*(Number(t.qty)||0);
+    if(k===kAtual){rA[d]+=r;cA[d]+=cs}
+    else if(k===kAnt){rP[d]+=r;cP[d]+=cs}
+  });
+  // mês atual só até hoje; mês anterior só até o último dia dele
+  const cut=(arr,lim)=>arr.map((v,i)=>i<lim?+v.toFixed(2):null);
+  const labels=Array.from({length:n},(_,i)=>String(i+1));
+  const nA=MOS[m],nP=MOS[pm];
+
+  // resumo: acumulado até hoje vs mesmo período do mês anterior
+  const lim=Math.min(dHoje,diasAnt);
+  const soma=(a,l)=>a.slice(0,l).reduce((s,v)=>s+v,0);
+  const recA=soma(rA,dHoje),recP=soma(rP,lim);
+  const cmp=document.getElementById('cDayCmp');
+  if(cmp){
+    if(recP>0){
+      const pct=((recA-recP)/recP)*100;
+      cmp.innerHTML=`Até dia ${dHoje}: <span style="color:${pct>=0?'var(--profit)':'var(--loss)'}">${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(0)}%</span> vs ${nP}`;
+    }else cmp.textContent=recA>0?`Até dia ${dHoje}: ${fmt(recA)}`:'';
+  }
+  const tt=document.getElementById('cDayTitle');
+  if(tt)tt.textContent=`Receita vs Custo — diário (${nA} × ${nP})`;
+
+  if(chDay)chDay.destroy();
+  const o=cO();
+  o.interaction={mode:'index',intersect:false};
+  o.plugins.tooltip={callbacks:{title:it=>`Dia ${it[0].label}`,label:ctx=>ctx.raw==null?null:` ${ctx.dataset.label}: ${fmt(ctx.raw)}`,labelColor:ctx=>({borderColor:ctx.dataset.borderColor,backgroundColor:ctx.dataset.borderColor})}};
+  o.plugins.legend.labels.boxWidth=22;
+  o.scales.x.ticks.autoSkip=true;o.scales.x.ticks.maxTicksLimit=16;
+  chDay=new Chart(document.getElementById('cDay'),{type:'line',data:{labels,datasets:[
+    {label:`Receita ${nA}`,data:cut(rA,dHoje),borderColor:'#c5d49a',backgroundColor:'rgba(197,212,154,.1)',tension:.35,fill:true,pointRadius:2,pointHoverRadius:5},
+    {label:`Custo ${nA}`,data:cut(cA,dHoje),borderColor:'#e07830',backgroundColor:'rgba(224,120,48,.08)',tension:.35,fill:true,pointRadius:2,pointHoverRadius:5},
+    {label:`Receita ${nP}`,data:cut(rP,diasAnt),borderColor:'rgba(197,212,154,.45)',borderDash:[5,4],backgroundColor:'transparent',tension:.35,fill:false,pointRadius:0,pointHoverRadius:4},
+    {label:`Custo ${nP}`,data:cut(cP,diasAnt),borderColor:'rgba(224,120,48,.45)',borderDash:[5,4],backgroundColor:'transparent',tension:.35,fill:false,pointRadius:0,pointHoverRadius:4}
+  ]},options:o});
 }
 
 function cO(){
